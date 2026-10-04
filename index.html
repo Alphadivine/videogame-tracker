@@ -1051,13 +1051,25 @@ function scheduleSync(){
   pushTimer=setTimeout(()=>{setSyncUI('syncing');syncPush().then(()=>setSyncUI()).catch(()=>setSyncUI('error'));},1200);
 }
 
+/* strip transient/DOM fields the app caches on objects (e.g. _el, _cd) and any
+   non-JSON values, so Firestore never sees a DOM node or undefined */
+function cleanForSync(v){
+  if(v===null)return null;
+  const t=typeof v;
+  if(t==='number'||t==='string'||t==='boolean')return v;
+  if(t==='undefined'||t==='function')return undefined;
+  if(v instanceof Node || (v&&v.nodeType&&v.tagName))return undefined;
+  if(Array.isArray(v)){const a=[];for(const x of v){const c=cleanForSync(x);if(c!==undefined)a.push(c);}return a;}
+  if(t==='object'){const o={};for(const k of Object.keys(v)){if(k.charAt(0)==='_')continue;const c=cleanForSync(v[k]);if(c!==undefined)o[k]=c;}return o;}
+  return undefined;
+}
 async function syncPush(){
   if(!haveSync())return;syncErr='';
   try{
     await fbInit();
     const updatedAt=Date.now();
     lastSync=updatedAt;lsSet('gametracker_lastsync',lastSync); // set first so our own live echo is ignored
-    await trackerRef().set({updatedAt,uid:fb.uid,data:gatherData()});
+    await trackerRef().set({updatedAt,uid:fb.uid,data:cleanForSync(gatherData())});
   }catch(e){syncErr=describeErr(e,'saving');throw e;}
 }
 
