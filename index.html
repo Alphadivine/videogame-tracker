@@ -327,6 +327,58 @@
     *{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.05ms!important}
     .ambient span{animation:none}
   }
+
+/* ===== Added features: polish, view banner, dashboard, date refresh ===== */
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.mbtn:active,.smallbtn:active,.ghostbtn:active,.chip:active,.addbtn:active,.btn:active{transform:translateY(1px)}
+
+/* viewing a shared list */
+.viewbanner{display:none;position:sticky;top:8px;z-index:60;align-items:center;justify-content:space-between;gap:14px;
+  background:linear-gradient(90deg,rgba(139,123,255,.26),rgba(60,224,212,.20));
+  border:1px solid var(--stroke);border-radius:14px;padding:11px 16px;margin:0 0 16px;
+  -webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);font-size:.92rem;box-shadow:var(--shadow)}
+.viewbanner b{color:#fff}
+.viewbanner a{color:var(--accent2);font-weight:700;text-decoration:none;white-space:nowrap}
+.viewbanner a:hover{text-decoration:underline}
+body.viewing #openAdd,body.viewing #openData,body.viewing #openDates,body.viewing #openSpend,
+body.viewing .card .corner,body.viewing .card .status,body.viewing .card .stars,body.viewing .card .edsel{display:none !important}
+
+/* "date updated" badge */
+.badge-upd{display:none;background:rgba(55,211,153,.95);color:#04110b;font-weight:800;font-size:.6rem;
+  letter-spacing:.02em;padding:4px 8px;border-radius:999px;align-self:flex-start}
+.card.dateupd .badge-upd{display:inline-block}
+
+/* spending dashboard */
+.sdash{display:grid;grid-template-columns:repeat(auto-fit,minmax(132px,1fr));gap:12px;margin-bottom:4px}
+.stile{background:var(--glass);border:1px solid var(--stroke);border-radius:16px;padding:14px 15px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.05)}
+.stile .sval{font-size:1.55rem;font-weight:800;letter-spacing:-.02em;line-height:1.1}
+.stile .slabel{font-size:.68rem;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);margin-top:4px;font-weight:700}
+.stile .ssub{font-size:.74rem;color:var(--muted);margin-top:5px}
+.stile.a .sval{background:linear-gradient(90deg,var(--accent),#a48bff);-webkit-background-clip:text;background-clip:text;color:transparent}
+.stile.b .sval{color:var(--good)}
+.stile.c .sval{color:var(--accent2)}
+.sh3{font-size:.95rem;margin:18px 0 10px;font-weight:700}
+.sbars{display:flex;flex-direction:column;gap:9px}
+.sbarrow{display:flex;align-items:center;gap:10px}
+.sbarkey{width:58px;flex:0 0 auto;font-size:.78rem;color:var(--muted);font-weight:600}
+.sbartrack{flex:1;height:14px;background:rgba(255,255,255,.06);border-radius:999px;overflow:hidden}
+.sbarfill{height:100%;border-radius:999px;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .6s cubic-bezier(.2,.8,.2,1)}
+.sbarval{width:70px;flex:0 0 auto;text-align:right;font-weight:700;font-size:.82rem}
+
+/* date refresh progress + results */
+.dbar{height:8px;background:rgba(255,255,255,.08);border-radius:999px;overflow:hidden;margin-top:12px}
+.dbarfill{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .3s;width:0}
+.datelist{display:flex;flex-direction:column;gap:8px;margin-top:12px;max-height:320px;overflow:auto}
+.dateitem{background:var(--glass);border:1px solid var(--stroke-soft);border-radius:12px;padding:10px 12px}
+.dateitem .dt{font-weight:700;font-size:.9rem}
+.dateitem .dd{font-size:.82rem;color:var(--muted);margin-top:3px}
+.dateitem .old{text-decoration:line-through;opacity:.7}
+.dateitem .new{color:var(--good);font-weight:700}
+
+/* share link row */
+.sharelink{display:flex;gap:8px;margin:8px 0}
+
 </style>
 </head>
 <body>
@@ -341,6 +393,7 @@
   <div class="bgart-grain"></div>
 </div>
 <div class="wrap">
+  <div id="viewBanner" class="viewbanner"></div>
   <header>
     <h1>🎮 Game Release Tracker</h1>
     <div class="sub">Your upcoming games — counting down to launch day</div>
@@ -357,6 +410,8 @@
     <div class="chip" data-f="mine">My list</div>
     <button class="addbtn" id="openAdd">＋ Add a game</button>
     <button class="ghostbtn" id="openData">☁ Sync</button>
+    <button class="ghostbtn" id="openSpend">📊 Spending</button>
+    <button class="ghostbtn" id="openDates">↻ Update dates</button>
     <button class="ghostbtn" id="openHelp">❔ How to use</button>
   </div>
 
@@ -484,8 +539,24 @@
       </div>
       <div class="cstatus" id="syncStatus" style="margin-top:8px"></div>
     </div>
+    <div class="datasec" id="shareSec">
+      <h3>Share your list</h3>
+      <div id="shareOff">
+        <p class="cstatus" style="margin-bottom:8px">Publish a read-only link so friends can see what you're tracking. Pick a name for your link:</p>
+        <input type="text" id="shareNameIn" class="datacode" style="height:auto;font-size:.85rem" placeholder="e.g. quentin">
+        <div class="databtnrow" style="margin-top:8px"><button class="mbtn primary" id="sharePublishBtn" type="button" style="padding:9px 16px">🔗 Publish list</button></div>
+      </div>
+      <div id="shareOn" style="display:none">
+        <p class="cstatus">✓ Sharing as <b id="shareNameLbl"></b>. Anyone with this link sees your latest list (read-only):</p>
+        <div class="sharelink"><input type="text" id="shareLinkShow" class="datacode" style="height:auto;font-size:.9rem;font-weight:600" readonly><button class="smallbtn" id="shareCopyBtn" type="button">⧉ Copy</button></div>
+        <label class="ctl toggle" style="margin:4px 0"><input type="checkbox" id="shareAutoChk"> Keep it updated automatically</label>
+        <div class="databtnrow" style="margin-top:6px"><button class="smallbtn" id="shareUpdateBtn" type="button">↻ Update now</button><button class="smallbtn" id="shareStopBtn" type="button">Stop sharing</button></div>
+      </div>
+      <div class="cstatus" id="shareStatus" style="margin-top:8px"></div>
+    </div>
     <div class="datasec">
       <h3>Manual export</h3>
+
       <div class="databtnrow">
         <button class="smallbtn" id="dlBackup" type="button">⬇ Download backup file</button>
         <button class="smallbtn" id="copyCode" type="button">⧉ Copy code</button>
@@ -502,6 +573,26 @@
       <div class="cstatus" id="dataStatus" style="margin-top:8px"></div>
     </div>
     <div class="modal-actions"><button class="mbtn ghost" id="dataClose" type="button">Close</button></div>
+  </div>
+</div>
+
+<!-- Spending dashboard -->
+<div class="overlay" id="spendOverlay">
+  <div class="modal" style="max-width:560px">
+    <h2>📊 Spending</h2>
+    <div class="msub">Your planned and past game spending, from your status picks and prices.</div>
+    <div id="spendBody"></div>
+    <div class="modal-actions"><button class="mbtn primary" id="spendClose" type="button">Done</button></div>
+  </div>
+</div>
+
+<!-- Update release dates -->
+<div class="overlay" id="dateOverlay">
+  <div class="modal" style="max-width:480px">
+    <h2>↻ Update release dates</h2>
+    <div class="msub">I’ll re-check each upcoming game on the web and update any dates that have shifted.</div>
+    <div id="dateBody"></div>
+    <div class="modal-actions"><button class="mbtn primary" id="dateClose" type="button">Close</button></div>
   </div>
 </div>
 
@@ -596,13 +687,13 @@ function lsGet(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.pa
 function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
 const statusStore={data:lsGet('gametracker_status',{}),
   get(k){return this.data[k]||null;},
-  set(k,v){if(v)this.data[k]=v;else delete this.data[k];lsSet('gametracker_status',this.data);scheduleSync();}};
+  set(k,v){if(window.VIEWING)return;if(v)this.data[k]=v;else delete this.data[k];lsSet('gametracker_status',this.data);scheduleSync();}};
 const priorityStore={data:lsGet('gametracker_priority',{}),
   get(k){return this.data[k]||0;},
-  set(k,v){if(v)this.data[k]=v;else delete this.data[k];lsSet('gametracker_priority',this.data);scheduleSync();}};
+  set(k,v){if(window.VIEWING)return;if(v)this.data[k]=v;else delete this.data[k];lsSet('gametracker_priority',this.data);scheduleSync();}};
 const editionStore={data:lsGet('gametracker_edition',{}),
   get(k){return this.data[k]||0;},
-  set(k,v){if(v)this.data[k]=v;else delete this.data[k];lsSet('gametracker_edition',this.data);scheduleSync();}};
+  set(k,v){if(window.VIEWING)return;if(v)this.data[k]=v;else delete this.data[k];lsSet('gametracker_edition',this.data);scheduleSync();}};
 function editionsOf(g){return [{name:'Standard',price:g.price||'TBA'}].concat(Array.isArray(g.editions)?g.editions:[]);}
 function effectivePrice(g){const eds=editionsOf(g);let i=editionStore.get(g.id);if(i<0||i>=eds.length)i=0;return eds[i].price;}
 /* flexible release timing: exact date / month / quarter / year / TBA */
@@ -727,7 +818,7 @@ function buildCard(g){
   const eds=editionsOf(g);const shownPrice=effectivePrice(g);const edIdx=editionStore.get(g.id);
   const edSelHtml=eds.length>1?`<div class="edrow"><span>Edition</span><select class="edsel">${eds.map((e,i)=>`<option value="${i}"${i===edIdx?' selected':''}>${e.name} — ${e.price}</option>`).join('')}</select></div>`:'';
   card.innerHTML=`
-    <div class="badges"><div class="badge-soon">Soon</div><div class="badge-got">✓ Owned</div></div>
+    <div class="badges"><div class="badge-soon">Soon</div><div class="badge-got">✓ Owned</div><div class="badge-upd">📅 Date updated</div></div>
     <div class="corner">
       <button class="iconbtn edit" title="Edit details" type="button">✎</button>
       ${g.builtin?'':'<button class="iconbtn del" title="Remove game" type="button">✕</button>'}
@@ -755,6 +846,7 @@ function buildCard(g){
       </div>
     </div>`;
   g._el=card;g._cd=card.querySelector('.countdown');
+  if(window.recentlyUpdated&&window.recentlyUpdated.has(g.id))card.classList.add('dateupd');
   const applyStatus=()=>{
     const s=statusStore.get(g.id);
     card.querySelectorAll('.st').forEach(el=>el.classList.toggle('on',el.dataset.s===s));
@@ -1046,6 +1138,8 @@ function describeErr(e,where){
 }
 
 function scheduleSync(){
+  if(window.VIEWING)return;
+  try{maybeAutoShare();}catch(e){}
   if(applyingRemote||!haveSync())return;
   clearTimeout(pushTimer);
   pushTimer=setTimeout(()=>{setSyncUI('syncing');syncPush().then(()=>setSyncUI()).catch(()=>setSyncUI('error'));},1200);
@@ -1064,6 +1158,7 @@ function cleanForSync(v){
   return undefined;
 }
 async function syncPush(){
+  if(window.VIEWING)return;
   if(!haveSync())return;syncErr='';
   try{
     await fbInit();
@@ -1370,11 +1465,192 @@ document.getElementById('f_save').addEventListener('click',async()=>{
   setTimeout(()=>{const t=ALL.find(x=>x.id===targetId);if(t&&t._el)t._el.scrollIntoView({behavior:'smooth',block:'center'});},80);
 });
 
+
+/* ================= Added features: date refresh · sharing · spending ================= */
+
+/* ---------- small helpers ---------- */
+function slugify(s){return (s||'').toLowerCase().trim().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,40);}
+function isoFromWd(dateStr,precision){
+  const p=(dateStr||'').split('-');const y=p[0]||'2099',mo=p[1]||'01',da=p[2]||'01';
+  if(precision<=9)return {date:y+'-01-01T00:00:00',datePrecision:'year'};
+  if(precision===10)return {date:y+'-'+mo+'-01T00:00:00',datePrecision:'month'};
+  return {date:y+'-'+mo+'-'+da+'T00:00:00',datePrecision:'day'};
+}
+function labelFor(dateStr,prec){return dateMeta({date:dateStr,datePrecision:prec}).short;}
+
+/* ---------- 1) Auto-update release dates (Wikidata) ---------- */
+const VG_TYPES={Q7889:1,Q7058673:1,Q865493:1}; /* video game, video game series, video game expansion */
+async function wdReleaseDetail(title){
+  try{
+    const sr=await fetch('https://en.wikipedia.org/w/api.php?action=query&generator=search&gsrsearch='+enc(title+' video game')+'&gsrlimit=1&prop=pageprops&format=json&origin=*').then(r=>r.json());
+    const pages=sr&&sr.query&&sr.query.pages;if(!pages)return null;
+    const pg=Object.values(pages)[0];
+    const qid=pg&&pg.pageprops&&pg.pageprops.wikibase_item;if(!qid)return null;
+    const wd=await fetch('https://www.wikidata.org/w/api.php?action=wbgetentities&ids='+qid+'&props=claims&format=json&origin=*').then(r=>r.json());
+    const claims=wd.entities&&wd.entities[qid]&&wd.entities[qid].claims;if(!claims)return null;
+    let isGame=false;
+    if(claims.P31)claims.P31.forEach(c=>{const id=c.mainsnak&&c.mainsnak.datavalue&&c.mainsnak.datavalue.value&&c.mainsnak.datavalue.value.id;if(id&&VG_TYPES[id])isGame=true;});
+    if(!isGame||!claims.P577)return null;
+    const cutoff=Date.now()-2*864e5; /* ignore clearly-past dates: wrong matches or stale regional dates */
+    let pick=null;
+    claims.P577.forEach(c=>{const v=c.mainsnak&&c.mainsnak.datavalue&&c.mainsnak.datavalue.value;if(!v||!v.time)return;
+      const t=v.time.slice(1,11).split('-');const y=t[0],mo=(t[1]==='00'?'01':t[1]),da=(t[2]==='00'?'01':t[2]);
+      const ds=y+'-'+mo+'-'+da;const ms=new Date(ds+'T00:00:00').getTime();
+      if(ms<cutoff)return;                         /* skip past dates entirely */
+      if(!pick||ds<pick.ds){pick={ds,prec:v.precision||11};}  /* soonest upcoming date */
+    });
+    if(!pick)return null;                          /* no reliable upcoming date -> leave the game unchanged */
+    return Object.assign({title:pg.title,qid},isoFromWd(pick.ds,pick.prec));
+  }catch(e){return null;}
+}
+window.recentlyUpdated=new Set();
+function applyDatePatch(g,patch){
+  const base=BUILTIN.find(b=>b.id===g.id);
+  if(base){overrides[g.id]=Object.assign({},overrides[g.id]||{},patch);}
+  else{custom=custom.map(x=>x.id===g.id?Object.assign({},x,patch):x);}
+}
+async function updateDatesFlow(){
+  const ov=document.getElementById('dateOverlay'),body=document.getElementById('dateBody');
+  ov.classList.add('open');
+  const now=new Date();
+  const targets=ALL.filter(g=>dateMeta(g).end>now);
+  if(!targets.length){body.innerHTML='<p class="cstatus">No upcoming games to check right now.</p>';return;}
+  window.recentlyUpdated=new Set();
+  const changes=[];let done=0;
+  const setProg=()=>{body.innerHTML='<p class="cstatus">Checking the web for date changes… <b>'+done+'/'+targets.length+'</b></p><div class="dbar"><div class="dbarfill" style="width:'+Math.round(done/targets.length*100)+'%"></div></div>';};
+  setProg();
+  for(const g of targets){
+    const det=await wdReleaseDetail(g.title);
+    done++;
+    if(det&&det.date){
+      const curDate=(g.date||'').slice(0,10),newDate=det.date.slice(0,10),curPrec=g.datePrecision||'day';
+      if(newDate!==curDate||det.datePrecision!==curPrec){
+        applyDatePatch(g,{date:det.date,datePrecision:det.datePrecision});
+        changes.push({title:g.title,from:labelFor(g.date,curPrec),to:labelFor(det.date,det.datePrecision)});
+        window.recentlyUpdated.add(g.id);
+      }
+    }
+    setProg();
+    await new Promise(r=>setTimeout(r,250));
+  }
+  if(changes.length){saveOverrides();saveCustom();renderAll();}
+  if(!changes.length){body.innerHTML='<p class="cstatus">✓ Checked '+targets.length+' game'+(targets.length>1?'s':'')+' — every date is already up to date.</p>';}
+  else{body.innerHTML='<p class="cstatus">✓ Updated '+changes.length+' date'+(changes.length>1?'s':'')+':</p><div class="datelist">'+
+    changes.map(c=>'<div class="dateitem"><div class="dt">'+esc(c.title)+'</div><div class="dd"><span class="old">'+esc(c.from)+'</span> → <span class="new">'+esc(c.to)+'</span></div></div>').join('')+'</div>';}
+}
+document.getElementById('openDates').addEventListener('click',updateDatesFlow);
+document.getElementById('dateClose').addEventListener('click',()=>document.getElementById('dateOverlay').classList.remove('open'));
+document.getElementById('dateOverlay').addEventListener('click',e=>{if(e.target.id==='dateOverlay')e.currentTarget.classList.remove('open');});
+
+/* ---------- 2) Share your list (public, read-only) ---------- */
+let shareSlug=lsGet('gametracker_shareslug','');
+let shareName=lsGet('gametracker_sharename','');
+let shareAuto=lsGet('gametracker_shareauto',false);
+let shareTimer=null;
+function shareUrl(slug){return location.origin+location.pathname+'#share='+slug;}
+function shareRef(slug){return fb.db.collection('shares').doc(slug);}
+async function sharePublish(name){
+  await fbInit();
+  const slug=slugify(name);if(!slug)throw new Error('bad name');
+  await shareRef(slug).set({updatedAt:Date.now(),ownerUid:fb.uid,name:name,data:cleanForSync(gatherData())});
+  shareSlug=slug;shareName=name;lsSet('gametracker_shareslug',slug);lsSet('gametracker_sharename',name);
+}
+async function shareRepublish(){if(!shareSlug)return;await fbInit();await shareRef(shareSlug).set({updatedAt:Date.now(),ownerUid:fb.uid,name:shareName||shareSlug,data:cleanForSync(gatherData())});}
+async function shareStop(){if(!shareSlug)return;try{await fbInit();await shareRef(shareSlug).delete();}catch(e){}shareSlug='';shareName='';shareAuto=false;lsSet('gametracker_shareslug','');lsSet('gametracker_sharename','');lsSet('gametracker_shareauto',false);}
+function maybeAutoShare(){if(window.VIEWING||!shareAuto||!shareSlug||!cloudConfigured())return;clearTimeout(shareTimer);shareTimer=setTimeout(()=>{shareRepublish().catch(()=>{});},1500);}
+function setShareUI(){
+  const on=!!shareSlug,onEl=document.getElementById('shareOn'),offEl=document.getElementById('shareOff');
+  if(!onEl)return;
+  onEl.style.display=on?'block':'none';offEl.style.display=on?'none':'block';
+  if(on){document.getElementById('shareLinkShow').value=shareUrl(shareSlug);document.getElementById('shareAutoChk').checked=!!shareAuto;document.getElementById('shareNameLbl').textContent=shareName||shareSlug;}
+}
+document.getElementById('sharePublishBtn').addEventListener('click',()=>{
+  const name=document.getElementById('shareNameIn').value.trim(),st=document.getElementById('shareStatus');
+  if(!name){st.textContent='Pick a name for your link first.';return;}
+  if(!cloudConfigured()){st.textContent='Add your Firebase keys first (same ones as sync).';return;}
+  st.textContent='Publishing…';
+  sharePublish(name).then(()=>{setShareUI();st.textContent='✓ Published! Copy your link below and send it to anyone.';}).catch(e=>{st.textContent='Couldn’t publish — '+describeErr(e,'publishing');});
+});
+document.getElementById('shareCopyBtn').addEventListener('click',()=>{const ta=document.getElementById('shareLinkShow');ta.select();try{navigator.clipboard.writeText(ta.value);}catch(e){try{document.execCommand('copy');}catch(_){}}document.getElementById('shareStatus').textContent='✓ Link copied.';});
+document.getElementById('shareAutoChk').addEventListener('change',e=>{shareAuto=e.target.checked;lsSet('gametracker_shareauto',shareAuto);if(shareAuto){shareRepublish().catch(()=>{});document.getElementById('shareStatus').textContent='✓ Auto-update on — your link always shows your latest list.';}});
+document.getElementById('shareUpdateBtn').addEventListener('click',()=>{const st=document.getElementById('shareStatus');st.textContent='Updating…';shareRepublish().then(()=>st.textContent='✓ Shared list updated.').catch(e=>st.textContent='Couldn’t update — '+describeErr(e,'updating'));});
+document.getElementById('shareStopBtn').addEventListener('click',()=>{if(!confirm('Stop sharing your list? The link will stop working for everyone.'))return;shareStop().then(()=>{setShareUI();document.getElementById('shareStatus').textContent='Sharing stopped.';});});
+document.getElementById('openData').addEventListener('click',()=>{try{setShareUI();}catch(e){}});
+
+/* ---------- 3) Spending dashboard ---------- */
+function spendData(){
+  const yr=new Date().getFullYear();
+  let upcoming=0,upCount=0,owned=0,ownCount=0,thisYear=0,tbaCount=0;
+  const byMonth={},order=[];
+  ALL.forEach(g=>{
+    const s=statusStore.get(g.id),p=parsePrice(effectivePrice(g));
+    if(s==='want'||s==='preordered'){
+      if(p===null){tbaCount++;}
+      else{upcoming+=p;upCount++;const d=new Date(g.date),key=d.toLocaleDateString('en-US',{month:'short',year:'2-digit'});
+        if(!(key in byMonth)){byMonth[key]=0;order.push({key,t:d.getTime()});}byMonth[key]+=p;}
+    }else if(s==='got'){
+      if(p!==null){owned+=p;ownCount++;if(new Date(g.date).getFullYear()===yr)thisYear+=p;}
+    }
+  });
+  order.sort((a,b)=>a.t-b.t);
+  return {upcoming,upCount,owned,ownCount,thisYear,tbaCount,byMonth,order,tracked:ALL.length,yr};
+}
+function openSpend(){
+  const d=spendData();
+  const tiles=[
+    {label:'Planned spend',val:money(d.upcoming),sub:d.upCount+' game'+(d.upCount!==1?'s':'')+(d.tbaCount?' · +'+d.tbaCount+' TBA':''),cls:'a'},
+    {label:'Spent this year',val:money(d.thisYear),sub:'in '+d.yr,cls:'b'},
+    {label:'Library value',val:money(d.owned),sub:d.ownCount+' owned',cls:'c'},
+    {label:'Games tracked',val:String(d.tracked),sub:'on your list',cls:'d'}
+  ];
+  const tileHtml=tiles.map(t=>'<div class="stile '+t.cls+'"><div class="sval">'+t.val+'</div><div class="slabel">'+t.label+'</div><div class="ssub">'+t.sub+'</div></div>').join('');
+  const max=Math.max(1,...d.order.map(o=>d.byMonth[o.key]));
+  const bars=d.order.length?d.order.map(o=>'<div class="sbarrow"><div class="sbarkey">'+o.key+'</div><div class="sbartrack"><div class="sbarfill" style="width:'+Math.max(3,Math.round(d.byMonth[o.key]/max*100))+'%"></div></div><div class="sbarval">'+money(d.byMonth[o.key])+'</div></div>').join('')
+    :'<p class="cstatus">Mark games “Want” or “Pre-ordered” to see your upcoming spend broken down by month.</p>';
+  document.getElementById('spendBody').innerHTML='<div class="sdash">'+tileHtml+'</div><h3 class="sh3">Upcoming spend by month</h3><div class="sbars">'+bars+'</div><p class="cstatus" style="margin-top:12px">Planned = games you marked Want or Pre-ordered. Library value = total of games marked “Got it”. Free counts as $0.</p>';
+  document.getElementById('spendOverlay').classList.add('open');
+}
+document.getElementById('openSpend').addEventListener('click',openSpend);
+document.getElementById('spendClose').addEventListener('click',()=>document.getElementById('spendOverlay').classList.remove('open'));
+document.getElementById('spendOverlay').addEventListener('click',e=>{if(e.target.id==='spendOverlay')e.currentTarget.classList.remove('open');});
+
+/* ---------- 4) Viewing someone else's shared list (read-only) ---------- */
+function shareSlugFromUrl(){
+  const h=location.hash||'';const m=h.match(/share=([a-z0-9-]+)/i);if(m)return m[1];
+  try{return new URLSearchParams(location.search).get('share')||'';}catch(e){return '';}
+}
+async function enterViewMode(slug){
+  window.VIEWING=true;document.body.classList.add('viewing');
+  const banner=document.getElementById('viewBanner');banner.style.display='flex';
+  banner.innerHTML='<span>Loading shared list…</span>';
+  try{
+    if(!cloudConfigured())throw new Error('cloud off');
+    await fbInit();
+    const snap=await fb.db.collection('shares').doc(slug).get();
+    if(!snap.exists){banner.innerHTML='<span>That shared list wasn’t found.</span><a href="'+location.pathname+'">Go to the app →</a>';renderAll();return;}
+    const d=(snap.data()&&snap.data().data)||{},nm=(snap.data()&&snap.data().name)||slug;
+    custom=Array.isArray(d.custom)?d.custom.map(x=>Object.assign({},x,{builtin:false})):[];
+    overrides=(d.overrides&&typeof d.overrides==='object')?d.overrides:{};
+    statusStore.data=d.status||{};priorityStore.data=d.priority||{};editionStore.data=d.edition||{};
+    renderAll();
+    banner.innerHTML='<span>👁 Viewing <b>'+esc(nm)+'</b>’s list — read-only</span><a href="'+location.pathname+'">← Back to my list</a>';
+  }catch(e){
+    banner.innerHTML='<span>Couldn’t load that shared list.</span><a href="'+location.pathname+'">Go to the app →</a>';
+    renderAll();
+  }
+}
+
+/* ---------- init ---------- */
+async function initApp(){
+  const slug=shareSlugFromUrl();
+  if(slug){await enterViewMode(slug);setInterval(tick,1000);return;}
+  renderAll();setInterval(tick,1000);
+  if(haveSync()){setSyncUI();syncPull().then(ch=>{if(ch)setSyncUI();}).catch(()=>setSyncUI('error'));}
+  try{setShareUI();}catch(e){}
+}
+
 /* boot */
-renderAll();
-setInterval(tick,1000);
-/* on load, pull latest from cloud if sync is on */
-if(haveSync()){setSyncUI();syncPull().then(ch=>{if(ch)setSyncUI();}).catch(()=>setSyncUI('error'));}
+initApp();
 
 /* PWA service worker (only when served over http/https) */
 if('serviceWorker' in navigator && location.protocol.indexOf('http')===0){

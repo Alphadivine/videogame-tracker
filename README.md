@@ -30,9 +30,12 @@ No build step, no dependencies. It's one self-contained `index.html` plus an ico
 - **▶ Trailer** and **＋ Google Calendar** buttons on every card.
 - **Search, sort** (soonest / price / most anticipated) and **group by month**.
 - Built-in **☔ How to use** guide.
+- **📊 Spending dashboard** — planned spend, spent this year, library value, and upcoming spend by month.
+- **↻ Update dates** — re-checks your upcoming games on the web and refreshes any release dates that have slipped.
 
 **Sync & backup**
 - **Cross-device sync** via a free **Firebase** project — set it up once (see `Cloud sync setup (Firebase).txt`), tap **Turn on sync**, and a sync code carries it to your other devices. Changes then sync **live**, both ways, in the background.
+- **Share your list** — publish a read-only public link so friends see what you're tracking, with optional auto-update.
 - **Manual backup** (download a file or copy a code) that needs no account.
 
 **App**
@@ -85,3 +88,7 @@ Or, once cloud sync is set up, just **Turn on sync** on one device and **Connect
 - **Cover-art search** and **auto-fill** use Wikipedia's public API from your browser (no key). Adding a game needs a connection; once added, the cover is saved for offline use.
 - **Sync** uses **Firebase Firestore**'s free tier (tens of thousands of reads/writes per day — far more than personal use needs) and updates flow **live** between devices. Your whole list, including cover art, syncs with room to spare. The manual backup always works without any account.
 - Everything runs client-side. There's no server of your own and no tracking.
+
+---
+
+_Last updated: October 2026. Full change history in `CHANGELOG.md`._
