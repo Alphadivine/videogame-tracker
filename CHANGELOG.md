@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-10 — Discover polish & real covers
+- De-duplicated the Discover feed (Wikidata's label service returned
+  en+mul labels, which doubled rows) and capped it at 30.
+- Fixed missing cover art everywhere: added `pilicense=any` to the
+  Wikipedia cover lookups. Game cover art is non-free, which PageImages
+  excludes by default — so Discover, the Add-game auto-fill, and the
+  title suggestions now show real covers.
+
 ## 2026-10 — Discover popular upcoming games & DLC
 - New **✨ Discover** panel: browse popular upcoming games and big DLC
   and add them in a tap (opens the Add form prefilled for review).
