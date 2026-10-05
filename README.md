@@ -32,7 +32,7 @@ No build step, no dependencies. It's one self-contained `index.html` plus an ico
 - Built-in **☔ How to use** guide.
 - **📊 Spending dashboard** — planned spend, spent this year, library value, and upcoming spend by month.
 - **↻ Update dates** — re-checks your upcoming games on the web and refreshes any release dates that have slipped.
-- **✨ Discover** — browse popular upcoming games and big DLC and add them in a tap. Live popularity-ranked feed with a free RAWG key, or a hand-picked fallback list without one.
+- **✨ Discover** — browse popular upcoming games and big DLC and add them in a tap. Keyless live feed ranked by popularity (via Wikidata); a RAWG key is optional, and a hand-picked list shows if the feed is unreachable.
 
 **Sync & backup**
 - **Cross-device sync** via a free **Firebase** project — set it up once (see `Cloud sync setup (Firebase).txt`), tap **Turn on sync**, and a sync code carries it to your other devices. Changes then sync **live**, both ways, in the background.
@@ -87,7 +87,7 @@ Or, once cloud sync is set up, just **Turn on sync** on one device and **Connect
 
 - **Storage** is per-origin `localStorage`, so it's private to your browser at that URL. Clearing site data wipes it — keep a backup or use sync.
 - **Cover-art search** and **auto-fill** use Wikipedia's public API from your browser (no key).
-- **Discover's live feed** uses the free [RAWG](https://rawg.io/apidocs) API (optional key, ~20k requests/month). Without it, Discover shows a curated fallback list. Adding a game needs a connection; once added, the cover is saved for offline use.
+- **Discover's live feed** uses the keyless [Wikidata Query Service](https://query.wikidata.org) (no key or signup). A [RAWG](https://rawg.io/apidocs) key is optional if you'd rather use RAWG; a curated fallback list shows if neither is reachable. Adding a game needs a connection; once added, the cover is saved for offline use.
 - **Sync** uses **Firebase Firestore**'s free tier (tens of thousands of reads/writes per day — far more than personal use needs) and updates flow **live** between devices. Your whole list, including cover art, syncs with room to spare. The manual backup always works without any account.
 - Everything runs client-side. There's no server of your own and no tracking.
 

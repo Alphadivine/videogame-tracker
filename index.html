@@ -619,7 +619,7 @@ body.viewing .card .corner,body.viewing .card .status,body.viewing .card .stars,
     <h2>✨ Discover</h2>
     <div class="msub">Popular upcoming games and big DLC — add any of them to your list in a tap.</div>
     <div id="discoverKeyWrap" style="display:none">
-      <p class="cstatus" style="margin-bottom:8px">For a live, popularity-ranked feed, paste a free <b>RAWG</b> key (<a href="https://rawg.io/apidocs" target="_blank" rel="noopener" style="color:var(--accent2);font-weight:700">rawg.io/apidocs ↗</a> → sign up → API key). Optional — a hand-picked list shows without it.</p>
+      <p class="cstatus" style="margin-bottom:8px">The live feed runs automatically — <b>no key or signup needed</b> (powered by Wikidata). <span style="opacity:.85">Optional: paste a <a href="https://rawg.io/apidocs" target="_blank" rel="noopener" style="color:var(--accent2);font-weight:700">RAWG key ↗</a> to use RAWG's feed instead.</span></p>
       <div class="sharelink"><input type="text" id="rawgKeyIn" class="datacode" style="height:auto;font-size:.85rem" placeholder="Paste your RAWG API key"><button class="smallbtn" id="rawgSaveBtn" type="button">Save</button></div>
     </div>
     <div class="dtoolbar"><button class="smallbtn" id="discoverRefresh" type="button">↻ Refresh</button></div>
@@ -1683,15 +1683,17 @@ async function initApp(){
 }
 
 
-/* ================= Discover: popular upcoming games & DLC (RAWG live + curated fallback) ================= */
-const RAWG={key:""}; /* optional baked key; user can also paste one in the Discover panel */
+/* ================= Discover: popular upcoming games & DLC ================= */
+/* Default live source: Wikidata Query Service (keyless, CORS-ok, ranked by how many
+   Wikipedia languages cover each game — a popularity proxy). Optional: paste a RAWG
+   key to use RAWG instead. Fallback: a hand-picked list if both are unreachable. */
+const RAWG={key:""};
 function rawgKey(){return (lsGet('gametracker_rawgkey','')||RAWG.key||'').trim();}
 
-/* conservative, widely-announced upcoming titles — covers & dates fill from the web on add */
 const DISCOVER_FALLBACK=[
   "Fable","Kingdom Hearts IV","Metroid Prime 4: Beyond","The Wolf Among Us 2","Ghost of Yotei",
   "Resident Evil Requiem","007 First Light","Little Nightmares III","Perfect Dark","Judas",
-  "Marathon","Pragmata","Light No Fire","Fed to the Flame"
+  "Marathon","Pragmata","Light No Fire"
 ];
 const RAWG_PLAT={playstation:'ps',xbox:'xbox',pc:'pc',nintendo:'switch'};
 function mapRawgPlats(arr){const s=new Set();(arr||[]).forEach(p=>{const slug=p.platform&&p.platform.slug;if(RAWG_PLAT[slug])s.add(RAWG_PLAT[slug]);});return [...s];}
@@ -1699,60 +1701,103 @@ function normTitle(t){return (t||'').toLowerCase().replace(/[^a-z0-9]+/g,'');}
 function onList(title){const n=normTitle(title);return ALL.some(g=>normTitle(g.title)===n);}
 
 let discoverCache=null;
+
+/* --- RAWG (optional, needs a key) --- */
 async function fetchRawgUpcoming(){
   const key=rawgKey();if(!key)throw new Error('no key');
   const today=new Date(),end=new Date(today.getTime()+730*864e5);
   const fmt=d=>d.toISOString().slice(0,10);
   const url='https://api.rawg.io/api/games?key='+enc(key)+'&dates='+fmt(today)+','+fmt(end)+'&ordering=-added&page_size=40';
-  const r=await fetch(url);
+  const r=await fetch(url);if(!r.ok)throw new Error('HTTP '+r.status);
+  const j=await r.json();
+  return (j.results||[]).map(g=>({title:g.name,date:g.released,prec:(g.released?'day':'tba'),cover:g.background_image,plats:mapRawgPlats(g.parent_platforms||g.platforms)}));
+}
+
+/* --- Wikidata (default, keyless) --- */
+async function fetchWikidataUpcoming(){
+  const q='SELECT ?game ?gameLabel ?date ?links WHERE {'+
+    '{ SELECT ?game (MIN(?d) AS ?date) (COUNT(DISTINCT ?sl) AS ?links) WHERE {'+
+    '?game wdt:P31 wd:Q7889 ; wdt:P577 ?d .'+
+    'FILTER(?d > NOW() && ?d < "2029-01-01"^^xsd:dateTime)'+
+    '?sl schema:about ?game .'+
+    '} GROUP BY ?game ORDER BY DESC(?links) LIMIT 50 }'+
+    'SERVICE wikibase:label { bd:serviceParam wikibase:language "en,mul". }'+
+    '} ORDER BY DESC(?links)';
+  const url='https://query.wikidata.org/sparql?format=json&query='+enc(q);
+  const r=await fetch(url,{headers:{'Accept':'application/sparql-results+json'}});
   if(!r.ok)throw new Error('HTTP '+r.status);
   const j=await r.json();
-  return (j.results||[]).map(g=>({title:g.name,date:g.released,tba:!!g.tba,cover:g.background_image,plats:mapRawgPlats(g.parent_platforms||g.platforms)}));
+  const out=[];
+  (j.results&&j.results.bindings||[]).forEach(b=>{
+    const title=b.gameLabel&&b.gameLabel.value;if(!title||/^Q\d+$/.test(title))return;
+    const ds=(b.date&&b.date.value||'').slice(0,10);
+    const prec=/-01-01$/.test(ds)?'year':'day';
+    out.push({title,date:ds,prec,cover:null,plats:[]});
+  });
+  return out;
 }
-function discoverCard(item,live){
+
+function fmtDiscDate(item){
+  if(item.prec==='tba'||!item.date)return 'Date TBA';
+  if(item.prec==='year')return 'Expected '+item.date.slice(0,4);
+  try{return new Date(item.date+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});}catch(e){return item.date;}
+}
+function discoverCard(item){
   const card=document.createElement('div');card.className='dcard';
   const plats=(item.plats||[]).map(p=>`<span class="plat ${p}">${PLAT_LABEL[p]}</span>`).join('');
-  const dateTxt=item.tba?'TBA':(item.date?new Date(item.date+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):'Date TBA');
   const added=onList(item.title);
   card.innerHTML='<div class="dcover" style="background-image:'+(item.cover?"url('"+item.cover+"')":'none')+'">'+(item.cover?'':'<span class="dph">🎮</span>')+'</div>'+
     '<div class="dbody"><div class="dtitle">'+esc(item.title)+'</div>'+
-    '<div class="dmeta">'+(live?'<span class="ddate">📅 '+esc(dateTxt)+'</span>':'<span class="ddate">tap to add from the web</span>')+'</div>'+
+    '<div class="dmeta"><span class="ddate">📅 '+esc(fmtDiscDate(item))+'</span></div>'+
     '<div class="dplats">'+plats+'</div>'+
     '<button class="smallbtn dadd" type="button"'+(added?' disabled':'')+'>'+(added?'✓ On your list':'＋ Add')+'</button></div>';
-  card.querySelector('.dadd').addEventListener('click',()=>{if(added)return;document.getElementById('discoverOverlay').classList.remove('open');live?openAddFromDiscover(item):openAddWithTitle(item.title);});
-  if(!live&&!item.cover){try{searchCover(item.title).then(u=>{if(u){const cov=card.querySelector('.dcover');cov.style.backgroundImage="url('"+u+"')";const ph=cov.querySelector('.dph');if(ph)ph.remove();}}).catch(()=>{});}catch(e){}}
+  card.querySelector('.dadd').addEventListener('click',()=>{if(added)return;document.getElementById('discoverOverlay').classList.remove('open');openAddFromDiscover(item);});
+  if(!item.cover){try{searchCover(item.title).then(u=>{if(u){const cov=card.querySelector('.dcover');cov.style.backgroundImage="url('"+u+"')";const ph=cov.querySelector('.dph');if(ph)ph.remove();}}).catch(()=>{});}catch(e){}}
   return card;
 }
-function openAddFromDiscover(item){
+async function openAddFromDiscover(item){
   openModal();
   fTitle.value=item.title;
-  if(item.tba||!item.date){fPrec.value='tba';showTiming('tba');}
+  if(item.prec==='tba'||!item.date){fPrec.value='tba';showTiming('tba');}
+  else if(item.prec==='year'){fPrec.value='year';showTiming('year');document.getElementById('f_year').value=item.date.slice(0,4);}
   else{fPrec.value='day';showTiming('day');fDate.value=item.date;}
-  setPlats(item.plats||[]);
+  if(item.plats&&item.plats.length)setPlats(item.plats);
   if(item.cover){pendingCover=item.cover;fPrev.style.backgroundImage="url('"+item.cover+"')";}
-  fCstatus.textContent='From Discover — cover, date & platforms prefilled. Review and add.';
-}
-async function loadDiscover(force){
-  const grid=document.getElementById('discoverGrid'),st=document.getElementById('discoverStatus'),keyWrap=document.getElementById('discoverKeyWrap');
-  const key=rawgKey();
-  keyWrap.style.display=key?'none':'block';
-  grid.innerHTML='';st.textContent=key?'Loading popular upcoming releases…':'';
-  if(key){
-    try{
-      if(!discoverCache||force)discoverCache=await fetchRawgUpcoming();
-      const items=discoverCache.filter(x=>!onList(x.title));
-      if(!items.length){st.textContent='You’re already tracking the top upcoming releases! Tap ↻ Refresh for more.';return;}
-      st.textContent='Popular upcoming games & DLC — tap ＋ Add to put one on your list.';
-      items.forEach(it=>grid.appendChild(discoverCard(it,true)));
-      return;
-    }catch(e){
-      st.textContent='Couldn’t load the live feed ('+((e&&e.message)||e)+') — showing a hand-picked list instead.';
+  fCstatus.textContent='From Discover — filling in details from the web…';
+  try{
+    if(!item.cover){const c=await searchCover(item.title);if(c){pendingCover=c;fPrev.style.backgroundImage="url('"+c+"')";}}
+    const det=await detailsForTitle(item.title);
+    if(det){
+      if(det.date&&(item.prec==='tba'||!item.date)){fPrec.value='day';showTiming('day');fDate.value=det.date;}
+      if(det.plats&&det.plats.length&&![...document.querySelectorAll('#f_plats .psel.on')].length)setPlats(det.plats);
+      if(det.buy&&!fBuy.value)fBuy.value=det.buy;
     }
+    fCstatus.textContent='Review the details and tap Add game. Edit anything you like.';
+  }catch(e){fCstatus.textContent='Review the details and tap Add game.';}
+}
+
+async function loadDiscover(force){
+  const grid=document.getElementById('discoverGrid'),st=document.getElementById('discoverStatus');
+  grid.innerHTML='';st.textContent='Loading popular upcoming releases…';
+  if(!discoverCache||force){
+    let items=null,via='';
+    try{
+      if(rawgKey()){items=await fetchRawgUpcoming();via='RAWG';}
+      else{items=await fetchWikidataUpcoming();via='Wikidata';}
+    }catch(e){
+      try{items=await fetchWikidataUpcoming();via='Wikidata';}catch(e2){}
+    }
+    if(items&&items.length)discoverCache={items,via};
   }
-  const fb=DISCOVER_FALLBACK.filter(t=>!onList(t));
-  if(!fb.length){st.textContent=st.textContent||'You’re already tracking these — nice.';}
-  fb.forEach(t=>grid.appendChild(discoverCard({title:t,plats:[]},false)));
-  if(!key)st.textContent='Add a free RAWG key for a live, popularity-ranked feed. Until then, here are big upcoming titles — tap to add.';
+  if(discoverCache&&discoverCache.items&&discoverCache.items.length){
+    const list=discoverCache.items.filter(x=>!onList(x.title));
+    if(!list.length){st.textContent='You’re already tracking the top upcoming releases! Tap ↻ Refresh for more.';return;}
+    st.textContent='Popular upcoming games & DLC — tap ＋ Add to put one on your list.';
+    list.forEach(it=>grid.appendChild(discoverCard(it)));
+    return;
+  }
+  st.textContent='Couldn’t reach the live feed right now — here’s a hand-picked list. Tap ↻ Refresh to try live again.';
+  DISCOVER_FALLBACK.filter(t=>!onList(t)).forEach(t=>grid.appendChild(discoverCard({title:t,prec:'tba',plats:[]})));
 }
 document.getElementById('openDiscover').addEventListener('click',()=>{document.getElementById('discoverOverlay').classList.add('open');loadDiscover(false);});
 document.getElementById('discoverClose').addEventListener('click',()=>document.getElementById('discoverOverlay').classList.remove('open'));
