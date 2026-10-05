@@ -379,6 +379,22 @@ body.viewing .card .corner,body.viewing .card .status,body.viewing .card .stars,
 /* share link row */
 .sharelink{display:flex;gap:8px;margin:8px 0}
 
+
+/* ===== Discover ===== */
+.dtoolbar{display:flex;justify-content:flex-end;margin-bottom:2px}
+.dgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;max-height:60vh;overflow:auto;padding:2px;margin-top:4px}
+.dcard{background:var(--glass);border:1px solid var(--stroke);border-radius:14px;overflow:hidden;display:flex;flex-direction:column;transition:transform .15s ease,border-color .15s ease}
+.dcard:hover{transform:translateY(-2px);border-color:rgba(139,123,255,.5)}
+.dcover{height:92px;background-size:cover;background-position:center;background-color:#141726;display:flex;align-items:center;justify-content:center}
+.dcover .dph{font-size:1.8rem;opacity:.5}
+.dbody{padding:9px 10px;display:flex;flex-direction:column;gap:6px;flex:1}
+.dtitle{font-weight:700;font-size:.82rem;line-height:1.25}
+.dmeta .ddate{font-size:.72rem;color:var(--muted)}
+.dplats{display:flex;flex-wrap:wrap;gap:4px}
+.dplats .plat{font-size:.56rem;padding:2px 6px}
+.dcard .dadd{margin-top:auto;width:100%;text-align:center}
+.dcard .dadd:disabled{opacity:.6;cursor:default}
+
 </style>
 </head>
 <body>
@@ -410,6 +426,7 @@ body.viewing .card .corner,body.viewing .card .status,body.viewing .card .stars,
     <div class="chip" data-f="mine">My list</div>
     <button class="addbtn" id="openAdd">＋ Add a game</button>
     <button class="ghostbtn" id="openData">☁ Sync</button>
+    <button class="ghostbtn" id="openDiscover">✨ Discover</button>
     <button class="ghostbtn" id="openSpend">📊 Spending</button>
     <button class="ghostbtn" id="openDates">↻ Update dates</button>
     <button class="ghostbtn" id="openHelp">❔ How to use</button>
@@ -593,6 +610,22 @@ body.viewing .card .corner,body.viewing .card .status,body.viewing .card .stars,
     <div class="msub">I’ll re-check each upcoming game on the web and update any dates that have shifted.</div>
     <div id="dateBody"></div>
     <div class="modal-actions"><button class="mbtn primary" id="dateClose" type="button">Close</button></div>
+  </div>
+</div>
+
+<!-- Discover -->
+<div class="overlay" id="discoverOverlay">
+  <div class="modal" style="max-width:720px">
+    <h2>✨ Discover</h2>
+    <div class="msub">Popular upcoming games and big DLC — add any of them to your list in a tap.</div>
+    <div id="discoverKeyWrap" style="display:none">
+      <p class="cstatus" style="margin-bottom:8px">For a live, popularity-ranked feed, paste a free <b>RAWG</b> key (<a href="https://rawg.io/apidocs" target="_blank" rel="noopener" style="color:var(--accent2);font-weight:700">rawg.io/apidocs ↗</a> → sign up → API key). Optional — a hand-picked list shows without it.</p>
+      <div class="sharelink"><input type="text" id="rawgKeyIn" class="datacode" style="height:auto;font-size:.85rem" placeholder="Paste your RAWG API key"><button class="smallbtn" id="rawgSaveBtn" type="button">Save</button></div>
+    </div>
+    <div class="dtoolbar"><button class="smallbtn" id="discoverRefresh" type="button">↻ Refresh</button></div>
+    <div class="cstatus" id="discoverStatus" style="margin:6px 0"></div>
+    <div class="dgrid" id="discoverGrid"></div>
+    <div class="modal-actions"><button class="mbtn primary" id="discoverClose" type="button">Done</button></div>
   </div>
 </div>
 
@@ -1648,6 +1681,84 @@ async function initApp(){
   if(haveSync()){setSyncUI();syncPull().then(ch=>{if(ch)setSyncUI();}).catch(()=>setSyncUI('error'));}
   try{setShareUI();}catch(e){}
 }
+
+
+/* ================= Discover: popular upcoming games & DLC (RAWG live + curated fallback) ================= */
+const RAWG={key:""}; /* optional baked key; user can also paste one in the Discover panel */
+function rawgKey(){return (lsGet('gametracker_rawgkey','')||RAWG.key||'').trim();}
+
+/* conservative, widely-announced upcoming titles — covers & dates fill from the web on add */
+const DISCOVER_FALLBACK=[
+  "Fable","Kingdom Hearts IV","Metroid Prime 4: Beyond","The Wolf Among Us 2","Ghost of Yotei",
+  "Resident Evil Requiem","007 First Light","Little Nightmares III","Perfect Dark","Judas",
+  "Marathon","Pragmata","Light No Fire","Fed to the Flame"
+];
+const RAWG_PLAT={playstation:'ps',xbox:'xbox',pc:'pc',nintendo:'switch'};
+function mapRawgPlats(arr){const s=new Set();(arr||[]).forEach(p=>{const slug=p.platform&&p.platform.slug;if(RAWG_PLAT[slug])s.add(RAWG_PLAT[slug]);});return [...s];}
+function normTitle(t){return (t||'').toLowerCase().replace(/[^a-z0-9]+/g,'');}
+function onList(title){const n=normTitle(title);return ALL.some(g=>normTitle(g.title)===n);}
+
+let discoverCache=null;
+async function fetchRawgUpcoming(){
+  const key=rawgKey();if(!key)throw new Error('no key');
+  const today=new Date(),end=new Date(today.getTime()+730*864e5);
+  const fmt=d=>d.toISOString().slice(0,10);
+  const url='https://api.rawg.io/api/games?key='+enc(key)+'&dates='+fmt(today)+','+fmt(end)+'&ordering=-added&page_size=40';
+  const r=await fetch(url);
+  if(!r.ok)throw new Error('HTTP '+r.status);
+  const j=await r.json();
+  return (j.results||[]).map(g=>({title:g.name,date:g.released,tba:!!g.tba,cover:g.background_image,plats:mapRawgPlats(g.parent_platforms||g.platforms)}));
+}
+function discoverCard(item,live){
+  const card=document.createElement('div');card.className='dcard';
+  const plats=(item.plats||[]).map(p=>`<span class="plat ${p}">${PLAT_LABEL[p]}</span>`).join('');
+  const dateTxt=item.tba?'TBA':(item.date?new Date(item.date+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):'Date TBA');
+  const added=onList(item.title);
+  card.innerHTML='<div class="dcover" style="background-image:'+(item.cover?"url('"+item.cover+"')":'none')+'">'+(item.cover?'':'<span class="dph">🎮</span>')+'</div>'+
+    '<div class="dbody"><div class="dtitle">'+esc(item.title)+'</div>'+
+    '<div class="dmeta">'+(live?'<span class="ddate">📅 '+esc(dateTxt)+'</span>':'<span class="ddate">tap to add from the web</span>')+'</div>'+
+    '<div class="dplats">'+plats+'</div>'+
+    '<button class="smallbtn dadd" type="button"'+(added?' disabled':'')+'>'+(added?'✓ On your list':'＋ Add')+'</button></div>';
+  card.querySelector('.dadd').addEventListener('click',()=>{if(added)return;document.getElementById('discoverOverlay').classList.remove('open');live?openAddFromDiscover(item):openAddWithTitle(item.title);});
+  if(!live&&!item.cover){try{searchCover(item.title).then(u=>{if(u){const cov=card.querySelector('.dcover');cov.style.backgroundImage="url('"+u+"')";const ph=cov.querySelector('.dph');if(ph)ph.remove();}}).catch(()=>{});}catch(e){}}
+  return card;
+}
+function openAddFromDiscover(item){
+  openModal();
+  fTitle.value=item.title;
+  if(item.tba||!item.date){fPrec.value='tba';showTiming('tba');}
+  else{fPrec.value='day';showTiming('day');fDate.value=item.date;}
+  setPlats(item.plats||[]);
+  if(item.cover){pendingCover=item.cover;fPrev.style.backgroundImage="url('"+item.cover+"')";}
+  fCstatus.textContent='From Discover — cover, date & platforms prefilled. Review and add.';
+}
+async function loadDiscover(force){
+  const grid=document.getElementById('discoverGrid'),st=document.getElementById('discoverStatus'),keyWrap=document.getElementById('discoverKeyWrap');
+  const key=rawgKey();
+  keyWrap.style.display=key?'none':'block';
+  grid.innerHTML='';st.textContent=key?'Loading popular upcoming releases…':'';
+  if(key){
+    try{
+      if(!discoverCache||force)discoverCache=await fetchRawgUpcoming();
+      const items=discoverCache.filter(x=>!onList(x.title));
+      if(!items.length){st.textContent='You’re already tracking the top upcoming releases! Tap ↻ Refresh for more.';return;}
+      st.textContent='Popular upcoming games & DLC — tap ＋ Add to put one on your list.';
+      items.forEach(it=>grid.appendChild(discoverCard(it,true)));
+      return;
+    }catch(e){
+      st.textContent='Couldn’t load the live feed ('+((e&&e.message)||e)+') — showing a hand-picked list instead.';
+    }
+  }
+  const fb=DISCOVER_FALLBACK.filter(t=>!onList(t));
+  if(!fb.length){st.textContent=st.textContent||'You’re already tracking these — nice.';}
+  fb.forEach(t=>grid.appendChild(discoverCard({title:t,plats:[]},false)));
+  if(!key)st.textContent='Add a free RAWG key for a live, popularity-ranked feed. Until then, here are big upcoming titles — tap to add.';
+}
+document.getElementById('openDiscover').addEventListener('click',()=>{document.getElementById('discoverOverlay').classList.add('open');loadDiscover(false);});
+document.getElementById('discoverClose').addEventListener('click',()=>document.getElementById('discoverOverlay').classList.remove('open'));
+document.getElementById('discoverOverlay').addEventListener('click',e=>{if(e.target.id==='discoverOverlay')e.currentTarget.classList.remove('open');});
+document.getElementById('discoverRefresh').addEventListener('click',()=>{discoverCache=null;loadDiscover(true);});
+document.getElementById('rawgSaveBtn').addEventListener('click',()=>{const v=document.getElementById('rawgKeyIn').value.trim();lsSet('gametracker_rawgkey',v);discoverCache=null;loadDiscover(true);});
 
 /* boot */
 initApp();

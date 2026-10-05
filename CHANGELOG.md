@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-10 — Discover popular upcoming games & DLC
+- New **✨ Discover** panel: browse popular upcoming games and big DLC
+  and add them in a tap (opens the Add form prefilled for review).
+- Live, popularity-ranked feed via the **RAWG** API when a free key is
+  added (paste it right in the Discover panel — no redeploy needed).
+  Without a key, or if the feed can't be reached (e.g. CORS), a
+  hand-picked fallback list shows instead, with covers pulled from the web.
+- Games already on your list are marked and filtered out.
+
 ## 2026-10 — Date auto-update, sharing & spending dashboard
 - **Update dates** (toolbar): re-checks each upcoming game on
   Wikipedia/Wikidata and updates any release dates that have shifted.
