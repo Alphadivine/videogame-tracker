@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-10 — Discover reliability
+- Guarded against duplicated cards: `loadDiscover` now renders only the
+  latest run, so double-tapping Refresh (or reopening mid-load) can't
+  stack duplicates.
+
 ## 2026-10 — Discover now flags DLC & expansions
 - Discover includes upcoming DLC/expansions (previously excluded) and
   marks each with a **"DLC · expansion"** badge, so add-ons for games

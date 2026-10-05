@@ -1703,6 +1703,7 @@ function normTitle(t){return (t||'').toLowerCase().replace(/[^a-z0-9]+/g,'');}
 function onList(title){const n=normTitle(title);return ALL.some(g=>normTitle(g.title)===n);}
 
 let discoverCache=null;
+let discoverToken=0;
 
 /* --- RAWG (optional, needs a key) --- */
 async function fetchRawgUpcoming(){
@@ -1783,6 +1784,7 @@ async function openAddFromDiscover(item){
 }
 
 async function loadDiscover(force){
+  const my=++discoverToken;
   const grid=document.getElementById('discoverGrid'),st=document.getElementById('discoverStatus');
   grid.innerHTML='';st.textContent='Loading popular upcoming releases…';
   if(!discoverCache||force){
@@ -1795,6 +1797,7 @@ async function loadDiscover(force){
     }
     if(items&&items.length)discoverCache={items,via};
   }
+  if(my!==discoverToken)return;
   if(discoverCache&&discoverCache.items&&discoverCache.items.length){
     const list=discoverCache.items.filter(x=>!onList(x.title));
     if(!list.length){st.textContent='You’re already tracking the top upcoming releases! Tap ↻ Refresh for more.';return;}
