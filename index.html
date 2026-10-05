@@ -395,6 +395,8 @@ body.viewing .card .corner,body.viewing .card .status,body.viewing .card .stars,
 .dcard .dadd{margin-top:auto;width:100%;text-align:center}
 .dcard .dadd:disabled{opacity:.6;cursor:default}
 
+.dcover{position:relative}
+.ddlc{position:absolute;top:6px;left:6px;background:linear-gradient(90deg,var(--pink),#a48bff);color:#fff;font-weight:800;font-size:.55rem;letter-spacing:.04em;padding:3px 7px;border-radius:999px;text-transform:uppercase;box-shadow:0 2px 8px rgba(0,0,0,.45)}
 </style>
 </head>
 <body>
@@ -1715,12 +1717,14 @@ async function fetchRawgUpcoming(){
 
 /* --- Wikidata (default, keyless) --- */
 async function fetchWikidataUpcoming(){
-  const q='SELECT ?game ?gameLabel ?date ?links WHERE {'+
-    '{ SELECT ?game (MIN(?d) AS ?date) (COUNT(DISTINCT ?sl) AS ?links) WHERE {'+
-    '?game wdt:P31 wd:Q7889 ; wdt:P577 ?d .'+
+  const q='SELECT ?game ?gameLabel ?date ?links ?isDlc WHERE {'+
+    '{ SELECT ?game (MIN(?d) AS ?date) (COUNT(DISTINCT ?sl) AS ?links) (MAX(?dlc) AS ?isDlc) WHERE {'+
+    'VALUES ?type { wd:Q7889 wd:Q209163 wd:Q1066707 }'+
+    '?game wdt:P31 ?type ; wdt:P577 ?d .'+
     'FILTER(?d > NOW() && ?d < "2029-01-01"^^xsd:dateTime)'+
     '?sl schema:about ?game .'+
-    '} GROUP BY ?game ORDER BY DESC(?links) LIMIT 50 }'+
+    'BIND(IF(?type = wd:Q7889, 0, 1) AS ?dlc)'+
+    '} GROUP BY ?game ORDER BY DESC(?links) LIMIT 60 }'+
     'SERVICE wikibase:label { bd:serviceParam wikibase:language "en,mul". }'+
     '} ORDER BY DESC(?links)';
   const url='https://query.wikidata.org/sparql?format=json&query='+enc(q);
@@ -1733,9 +1737,10 @@ async function fetchWikidataUpcoming(){
     const k=title.toLowerCase().replace(/[^a-z0-9]+/g,'');if(seen.has(k))return;seen.add(k);
     const ds=(b.date&&b.date.value||'').slice(0,10);
     const prec=/-01-01$/.test(ds)?'year':'day';
-    out.push({title,date:ds,prec,cover:null,plats:[]});
+    const dlc=!!(b.isDlc&&b.isDlc.value==='1');
+    out.push({title,date:ds,prec,cover:null,plats:[],dlc});
   });
-  return out.slice(0,30);
+  const _g=out.filter(x=>!x.dlc),_d=out.filter(x=>x.dlc);return _g.slice(0,28).concat(_d.slice(0,8));
 }
 
 function fmtDiscDate(item){
@@ -1747,7 +1752,7 @@ function discoverCard(item){
   const card=document.createElement('div');card.className='dcard';
   const plats=(item.plats||[]).map(p=>`<span class="plat ${p}">${PLAT_LABEL[p]}</span>`).join('');
   const added=onList(item.title);
-  card.innerHTML='<div class="dcover" style="background-image:'+(item.cover?"url('"+item.cover+"')":'none')+'">'+(item.cover?'':'<span class="dph">🎮</span>')+'</div>'+
+  card.innerHTML='<div class="dcover" style="background-image:'+(item.cover?"url('"+item.cover+"')":'none')+'">'+(item.dlc?'<span class="ddlc">DLC · expansion</span>':'')+(item.cover?'':'<span class="dph">🎮</span>')+'</div>'+
     '<div class="dbody"><div class="dtitle">'+esc(item.title)+'</div>'+
     '<div class="dmeta"><span class="ddate">📅 '+esc(fmtDiscDate(item))+'</span></div>'+
     '<div class="dplats">'+plats+'</div>'+

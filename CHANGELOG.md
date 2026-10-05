@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-10 — Discover now flags DLC & expansions
+- Discover includes upcoming DLC/expansions (previously excluded) and
+  marks each with a **"DLC · expansion"** badge, so add-ons for games
+  that are already out are easy to spot next to brand-new releases.
+  (Detected via Wikidata's "expansion add-on" / "downloadable content"
+  classes; a few feed slots are reserved so DLC always surface.)
+
 ## 2026-10 — Discover polish & real covers
 - De-duplicated the Discover feed (Wikidata's label service returned
   en+mul labels, which doubled rows) and capped it at 30.
