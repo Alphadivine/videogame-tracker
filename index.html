@@ -405,6 +405,17 @@ body.viewing .card .corner,body.viewing .card .status,body.viewing .card .stars,
 .pdrow{display:flex;gap:6px;margin-bottom:6px;align-items:center}
 .pdrow select,.pdrow input{background:var(--bg);border:1px solid var(--stroke);color:var(--text);border-radius:8px;padding:7px 8px;font-size:.82rem;font-family:inherit}
 .pdrow .pdwhen{flex:1;min-width:90px}
+.wn-body{max-height:58vh;overflow-y:auto;padding-right:8px;margin-top:4px}
+.wn-body::-webkit-scrollbar{width:8px}
+.wn-body::-webkit-scrollbar-thumb{background:var(--stroke);border-radius:8px}
+.wn-block{margin-bottom:14px}
+.wn-h{font-weight:800;font-size:.95rem;color:var(--accent2);margin-bottom:8px}
+.wn-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:9px}
+.wn-list li{font-size:.86rem;line-height:1.5;color:var(--text);padding-left:2px}
+.wn-list li b{font-weight:700}
+.wn-older{margin-top:4px;border-top:1px solid var(--stroke-soft);padding-top:4px}
+.wn-older>summary{cursor:pointer;color:var(--muted);font-size:.82rem;padding:8px 0;list-style:none}
+.wn-older>summary:hover{color:var(--text)}
 </style>
 </head>
 <body>
@@ -439,6 +450,7 @@ body.viewing .card .corner,body.viewing .card .status,body.viewing .card .stars,
     <button class="ghostbtn" id="openDiscover">✨ Discover</button>
     <button class="ghostbtn" id="openSpend">📊 Spending</button>
     <button class="ghostbtn" id="openDates">↻ Update dates</button>
+    <button class="ghostbtn" id="openWhatsNew">🆕 What's new</button>
     <button class="ghostbtn" id="openHelp">❔ How to use</button>
   </div>
 
@@ -667,6 +679,16 @@ body.viewing .card .corner,body.viewing .card .status,body.viewing .card .stars,
       <div class="help-item"><div class="help-ico">📲</div><div><h4>Install it as an app</h4><p>When it's hosted at a web link, add it to your home screen (iPhone: Share ▸ Add to Home Screen; Android/Desktop Chrome: Install app) for a full-screen app with its own icon that works offline.</p></div></div>
     </div>
     <div class="modal-actions"><button class="mbtn primary" id="helpClose" type="button">Got it</button></div>
+  </div>
+</div>
+
+<!-- What's new -->
+<div class="overlay" id="whatsNewOverlay">
+  <div class="modal" style="max-width:520px">
+    <h2>🆕 What’s new</h2>
+    <div class="msub">The latest updates to your tracker.</div>
+    <div class="wn-body" id="whatsNewBody"></div>
+    <div class="modal-actions"><button class="mbtn primary" id="whatsNewClose" type="button">Got it 🎉</button></div>
   </div>
 </div>
 
@@ -1467,6 +1489,58 @@ document.getElementById('buyClose').addEventListener('click',()=>buyOverlay.clas
 buyOverlay.addEventListener('click',e=>{if(e.target===buyOverlay)buyOverlay.classList.remove('open');});
 
 /* ---- how-to modal ---- */
+/* ---------------- What's new ----------------
+   Bump APP_VERSION and prepend a WHATS_NEW entry whenever features ship. The
+   popup auto-shows once per version (tracked in localStorage); the 🆕 What's
+   new button reopens the full history any time. */
+const APP_VERSION="2026.10.14";
+const WHATS_NEW=[
+  {v:"2026.10.14",title:"Release dates by platform",items:[
+    "🗓️ <b>Staggered launches</b> — a game can now hold <b>different release dates per platform</b> (e.g. PS5 now, PC later). Add them in the Add/Edit form under <b>Release dates by platform</b>, and the card shows the full schedule (<i>Also: PC Mar 2027</i>). The main date still drives the countdown, so point it at whichever platform you care about.",
+  ]},
+  {v:"2026.10.12",title:"Discover: cleaner feed & clear item types",items:[
+    "🎯 <b>No more already-out games</b> — Discover used to show games that are already released but had a later port/edition date (that's why <i>007 First Light</i> looked new). It now surfaces only genuinely upcoming releases.",
+    "🏷️ <b>Everything's labelled</b> — add-ons are tagged <b>DLC</b>, <b>Expansion</b>, <b>Remaster</b> or <b>Remake</b>, so you can tell them from brand-new games at a glance.",
+  ]},
+  {v:"2026.10.10",title:"Genre tags & filter",items:[
+    "🎮 <b>Genre tags</b> — every game shows its genres (RPG, Shooter, Horror, Action-Adventure, …). Games you add pull their genre from the web automatically, and older ones fill in over time.",
+    "🔎 <b>Filter by genre</b> — a new <b>Genre</b> dropdown in the toolbar narrows your list to one genre.",
+  ]},
+  {v:"2026.10.08",title:"Discover popular upcoming games & DLC",items:[
+    "✨ <b>Discover</b> — a new panel to browse popular upcoming games and big DLC and add them in a tap. Powered by a keyless live feed ranked by popularity, with real cover art pulled in automatically.",
+  ]},
+  {v:"2026.10.05",title:"Auto-update dates, sharing & spending",items:[
+    "↻ <b>Update dates</b> — re-checks your upcoming games on the web and fixes any release dates that slipped. Changed games get a green <b>Date updated</b> badge.",
+    "🔗 <b>Share your list</b> — publish a read-only link from the ☁ Sync panel so friends can see what you're tracking, with optional auto-refresh.",
+    "📊 <b>Spending dashboard</b> — planned spend, spent this year, library value and upcoming spend by month, all in one view.",
+  ]},
+  {v:"2026.10.03",title:"Cross-device sync",items:[
+    "☁️ <b>Sync across devices</b> — turn on sync in the ☁ Sync panel to get a code, enter it on your other devices, and your whole list (games, statuses, priorities, editions) stays in step automatically.",
+  ]},
+];
+function wnBlock(e){return '<div class="wn-block"><div class="wn-h">'+esc(e.title)+'</div><ul class="wn-list">'+e.items.map(i=>'<li>'+i+'</li>').join('')+'</ul></div>';}
+function renderWhatsNew(list,showOlder){
+  const entries=list||WHATS_NEW,RECENT=4;
+  let html=entries.slice(0,RECENT).map(wnBlock).join('');
+  const older=entries.slice(RECENT);
+  if(showOlder&&older.length){html+='<details class="wn-older"><summary>Show '+older.length+' older update'+(older.length>1?'s':'')+'</summary>'+older.map(wnBlock).join('')+'</details>';}
+  document.getElementById('whatsNewBody').innerHTML=html||'<div class="cstatus">You’re all caught up.</div>';
+}
+function whatsNewSince(seen){if(!seen)return WHATS_NEW.slice(0,3);const i=WHATS_NEW.findIndex(e=>e.v===seen);return i>0?WHATS_NEW.slice(0,i):(i===0?[]:WHATS_NEW.slice(0,3));}
+function openWhatsNew(){renderWhatsNew(WHATS_NEW,true);document.getElementById('whatsNewOverlay').classList.add('open');}
+function maybeShowWhatsNew(){
+  let seen=null;try{seen=localStorage.getItem('gametracker_seenVersion');}catch(e){}
+  if(seen===APP_VERSION)return;
+  const since=whatsNewSince(seen);
+  try{localStorage.setItem('gametracker_seenVersion',APP_VERSION);}catch(e){}
+  if(!since.length)return;                       // nothing new for this device
+  renderWhatsNew(since,false);
+  document.getElementById('whatsNewOverlay').classList.add('open');
+}
+const whatsNewOverlay=document.getElementById('whatsNewOverlay');
+document.getElementById('openWhatsNew').addEventListener('click',openWhatsNew);
+document.getElementById('whatsNewClose').addEventListener('click',()=>whatsNewOverlay.classList.remove('open'));
+whatsNewOverlay.addEventListener('click',e=>{if(e.target===whatsNewOverlay)whatsNewOverlay.classList.remove('open');});
 const helpOverlay=document.getElementById('helpOverlay');
 document.getElementById('openHelp').addEventListener('click',()=>helpOverlay.classList.add('open'));
 document.getElementById('helpClose').addEventListener('click',()=>helpOverlay.classList.remove('open'));
@@ -1759,6 +1833,7 @@ async function initApp(){
   renderAll();setInterval(tick,1000);
   if(haveSync()){setSyncUI();syncPull().then(ch=>{if(ch)setSyncUI();}).catch(()=>setSyncUI('error'));}
   try{setShareUI();}catch(e){}
+  try{maybeShowWhatsNew();}catch(e){}
 }
 
 

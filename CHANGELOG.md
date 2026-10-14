@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-10 — "What's new" panel
+- Added a **🆕 What's new** button to the toolbar and a popup that shows the
+  latest updates. It appears automatically once per app version (only the
+  entries newer than your last visit), and reopens any time from the toolbar
+  with the full history — older entries fold away behind "Show older updates".
+- The popup never interrupts a shared read-only view; "seen" is tracked per
+  device in localStorage, so bumping the version shows it once, then stops.
+
 ## 2026-10 — Per-platform release dates
 - Track **different release dates per platform** for staggered launches
   (e.g. PS5 now, PC later). Add them in the Add/Edit form under "Release

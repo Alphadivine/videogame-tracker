@@ -31,6 +31,7 @@ No build step, no dependencies. It's one self-contained `index.html` plus an ico
 - **Search, sort** (soonest / price / most anticipated) and **group by month**.
 - **Genre tags & filter** — games are tagged by genre (pulled from Wikidata) and a Genre filter narrows the list.
 - Built-in **☔ How to use** guide.
+- **🆕 What's new** — a changelog panel that pops up once after each update (showing only what's new since your last visit) and reopens any time from the toolbar, with older updates tucked behind a fold.
 - **📊 Spending dashboard** — planned spend, spent this year, library value, and upcoming spend by month.
 - **↻ Update dates** — re-checks your upcoming games on the web and refreshes any release dates that have slipped.
 - **✨ Discover** — browse popular upcoming games and big DLC and add them in a tap. Keyless live feed ranked by popularity (via Wikidata); a RAWG key is optional, and a hand-picked list shows if the feed is unreachable.
@@ -94,4 +95,4 @@ Or, once cloud sync is set up, just **Turn on sync** on one device and **Connect
 
 ---
 
-_Last updated: October 2026. Full change history in `CHANGELOG.md`._
+_Last updated: October 14, 2026. Full change history in `CHANGELOG.md`._
