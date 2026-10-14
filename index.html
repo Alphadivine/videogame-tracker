@@ -437,7 +437,7 @@ body.viewing .card .corner,body.viewing .card .status,body.viewing .card .stars,
 body.view-dash .grid{grid-template-columns:repeat(auto-fill,minmax(470px,1fr))}
 body.view-dash .card{flex-direction:row}
 body.view-dash .card .cover{width:162px;flex:0 0 162px;aspect-ratio:auto;height:auto;align-self:stretch;min-height:100%}
-body.view-dash .card .cover .art{object-fit:cover}
+body.view-dash .card .cover .art{object-fit:contain}
 body.view-dash .card .body{flex:1;min-width:0}
 
 /* Shelf view = art-forward poster wall with a warm, distinct accent */
@@ -460,6 +460,25 @@ body.view-shelf .card .price{border-color:rgba(224,164,78,.4);color:#f2c477}
   body.view-dash .card .cover{width:100%;flex-basis:auto;aspect-ratio:16/9;min-height:0}
   body.view-dash .card .cover .art{object-fit:contain}
 }
+
+/* ===== Polish: platform spine, big card countdown ===== */
+body.view-dash .card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;z-index:5;background:var(--accent)}
+body.view-dash .card[data-plats^="ps"]::before{background:var(--ps)}
+body.view-dash .card[data-plats^="xbox"]::before{background:var(--xbox)}
+body.view-dash .card[data-plats^="pc"]::before{background:var(--pc)}
+body.view-dash .card[data-plats^="switch"]::before{background:var(--switch)}
+body.view-dash .card .body{padding-left:21px}
+
+.countdown.cdbig{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+.cdday{display:flex;align-items:baseline;gap:7px}
+.cdday .num{font-size:2.3rem;font-weight:900;line-height:.82;font-variant-numeric:tabular-nums;background:linear-gradient(180deg,#fff,#cdd3e8);-webkit-background-clip:text;background-clip:text;color:transparent}
+.cdday .dl{font-size:.6rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);font-weight:800}
+.cdclock{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:1.05rem;font-weight:700;color:#e9e2df;letter-spacing:.06em;display:flex;align-items:baseline;gap:3px}
+.cdclock i{font-style:normal;opacity:.55}
+.cdclock small{flex-basis:100%;width:100%;font-size:.5rem;letter-spacing:.14em;color:var(--muted);text-transform:uppercase;font-family:inherit;margin-top:3px}
+.card.soon .cdday .num{background:none;color:var(--soon);text-shadow:0 0 14px rgba(255,93,126,.5)}
+.card.released .cdday .num{background:none;color:var(--accent2)}
+body.view-shelf .cdday .num{font-size:1.7rem}
 </style>
 </head>
 <body>
@@ -944,7 +963,7 @@ function buildCard(g){
   const buy=g.buy||('https://www.google.com/search?q='+enc(g.title));
   const trailer=g.trailer||('https://www.youtube.com/results?search_query='+enc(g.title+' trailer'));
   const cdHtml=meta.isExact
-    ? `<div class="countdown"><div class="cd"><div class="num d">--</div><div class="lbl">Days</div></div><div class="cd"><div class="num h">--</div><div class="lbl">Hrs</div></div><div class="cd"><div class="num m">--</div><div class="lbl">Min</div></div><div class="cd"><div class="num s">--</div><div class="lbl">Sec</div></div></div>`
+    ? `<div class="countdown cdbig"><div class="cdday"><span class="num d">--</span><span class="dl">days</span></div><div class="cdclock"><span class="h">--</span><i>:</i><span class="m">--</span><i>:</i><span class="s">--</span><small>hrs · min · sec</small></div></div>`
     : `<div class="countdown approx"><div class="cd" style="flex:1"><div class="num">${meta.short}</div><div class="lbl">${meta.prec==='tba'?'To be announced':'Estimated window'}</div></div></div>`;
   const calHtml=meta.prec==='tba'
     ? `<button class="btn cal" type="button" disabled title="No date yet" style="opacity:.45;cursor:not-allowed">＋ Google</button>`

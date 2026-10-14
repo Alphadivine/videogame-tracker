@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-10 — Dashboard card polish
+- **Full cover art** on Dashboard cards — the horizontal card art is no
+  longer center-cropped; the whole cover shows (letterboxed on a blurred
+  backdrop), fixing games whose art was cut off (e.g. landscape covers).
+- **Platform-colored spine** down the left edge of each Dashboard card
+  (PlayStation blue, Xbox green, PC gold, Switch red) from the game's
+  first platform.
+- **Big-number countdown on cards** — cards now show a large day count +
+  a monospace HH:MM:SS clock, matching the hero (was four equal boxes).
+
 ## 2026-10 — Bold redesign: Ember look + Dashboard/Shelf views
 - New **Ember** visual identity (warm orange accents on a carbon base),
   replacing the previous purple/teal. Recolored app-wide via CSS variables.
