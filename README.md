@@ -16,7 +16,7 @@ No build step, no dependencies. It's one self-contained `index.html` plus an ico
 
 **Your list**
 - **Add a game** with type-to-search suggestions from the web — picks the cover art, release date, platforms, and official link automatically. Add a price and you're done.
-- **Edit** any game (including the built-in ones) — dates, price, platforms, links, cover. Built-ins have a **Reset to default**. Games you add can be removed.
+- **Edit** any game (including the built-in ones) — dates, price, platforms, links, cover. You can also set **per-platform release dates** for staggered launches (PS5 now, PC later) — shown on the card. Built-ins have a **Reset to default**. Games you add can be removed.
 - **Priority ★ ratings** — mark how excited you are and sort by "Most anticipated".
 - **Status** — mark each game Want / Pre-ordered / Got it; the **My list** filter shows just those.
 - **Editions** — add Standard / Deluxe / Collector's versions with prices; pick one per game and it drives the card price and your budget.
@@ -29,6 +29,7 @@ No build step, no dependencies. It's one self-contained `index.html` plus an ico
 **Extras**
 - **▶ Trailer** and **＋ Google Calendar** buttons on every card.
 - **Search, sort** (soonest / price / most anticipated) and **group by month**.
+- **Genre tags & filter** — games are tagged by genre (pulled from Wikidata) and a Genre filter narrows the list.
 - Built-in **☔ How to use** guide.
 - **📊 Spending dashboard** — planned spend, spent this year, library value, and upcoming spend by month.
 - **↻ Update dates** — re-checks your upcoming games on the web and refreshes any release dates that have slipped.

@@ -1,5 +1,26 @@
 # Changelog
 
+## 2026-10 — Per-platform release dates
+- Track **different release dates per platform** for staggered launches
+  (e.g. PS5 now, PC later). Add them in the Add/Edit form under "Release
+  dates by platform"; the card then shows the full schedule
+  ("Also: PC Mar 2027"). The main date still drives the countdown, so
+  point it at whichever platform matters to you.
+
+## 2026-10 — Discover: cleaner feed + clear item types
+- Discover no longer shows games that are **already out** but have a
+  future port/edition date (that was making released games look new,
+  e.g. 007 First Light). It now surfaces only genuinely upcoming games.
+- Each non-standard item is clearly tagged: **DLC**, **Expansion**,
+  **Remaster**, or **Remake**. Month-only dates show as "Expected Mar 2027".
+
+## 2026-10 — Genre tags & filter
+- Every game now shows **genre tags** (RPG, Shooter, Horror,
+  Action-Adventure, ...). Built-ins are tagged; games you add — by hand
+  or from Discover — pull their genre from Wikidata (P136), and older
+  added games backfill in the background.
+- New **Genre** filter in the toolbar narrows the list to one genre.
+
 ## 2026-10 — Discover reliability
 - Guarded against duplicated cards: `loadDiscover` now renders only the
   latest run, so double-tapping Refresh (or reopening mid-load) can't
