@@ -23,6 +23,7 @@ No build step, no dependencies. It's one self-contained `index.html` plus an ico
 
 **Money & buying**
 - **Budget** — games marked Want or Pre-ordered are totalled at the top, broken down by month (Free counts as $0).
+- **PC price & deals** — games on PC show the current best price and any active discount (via CheapShark), linking straight to the deal.
 - **Buy** opens a store picker that sends you to the right storefront per platform: PlayStation Store, Microsoft/Xbox, Steam or Epic (PC), or the Nintendo eShop.
 - **Prices are validated** to US format ($X.XX / Free / TBA).
 
@@ -30,7 +31,7 @@ No build step, no dependencies. It's one self-contained `index.html` plus an ico
 - **▶ Trailer** and **＋ Google Calendar** buttons on every card.
 - **Search, sort** (soonest / price / most anticipated) and **group by month**.
 - **Genre tags & filter** — games are tagged by genre (pulled from Wikidata) and a Genre filter narrows the list.
-- **Two views** — a **Dashboard ⇄ Shelf** toggle in the controls row. Dashboard shows full detailed cards; Shelf is an art-forward poster wall for browsing (warmer accent). Your pick is remembered on each device.
+- **Three views** — a **Dashboard ⇄ Shelf ⇄ 📅 Calendar** toggle. Dashboard = full detailed cards; Shelf = an art-forward browse wall; Calendar = a month grid of your releases with an "add all to calendar" (.ics) export. Your pick is remembered per device.
 - Built-in **☔ How to use** guide.
 - **🆕 What's new** — a changelog panel that pops up once after each update (showing only what's new since your last visit) and reopens any time from the toolbar, with older updates tucked behind a fold.
 - **📊 Spending dashboard** — planned spend, spent this year, library value, and upcoming spend by month.
@@ -96,4 +97,4 @@ Or, once cloud sync is set up, just **Turn on sync** on one device and **Connect
 
 ---
 
-_Last updated: October 14, 2026 (Ember redesign). Full change history in `CHANGELOG.md`._
+_Last updated: October 14, 2026 (Calendar view + PC deals). Full change history in `CHANGELOG.md`._

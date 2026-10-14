@@ -486,6 +486,42 @@ body.view-shelf .cdday .num{font-size:1.7rem}
 .plats .plat.mine{box-shadow:0 0 0 2px rgba(255,255,255,.92),0 5px 16px -4px rgba(0,0,0,.6)}
 .plats .plat.mine::before{content:"\2713 ";font-weight:900}
 body.viewing .plats .plat{cursor:default}
+
+/* ===== PC price & deals ===== */
+.pcdeal{font-size:.78rem;margin-top:-4px;line-height:1.4}
+.pcdeal a{color:#8fe3b0;text-decoration:none;display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap}
+.pcdeal a:hover{text-decoration:underline}
+.pcdeal s{color:var(--muted)}
+.pcdeal b{color:#c6f5da}
+.salebadge{background:linear-gradient(135deg,#1aa92e,#49e39b);color:#042;font-weight:900;font-size:.58rem;padding:2px 7px;border-radius:999px;letter-spacing:.02em}
+body.view-shelf .card .pcdeal{display:none!important}
+
+/* ===== Calendar view ===== */
+#calRoot{display:none}
+body.view-cal #grid,body.view-cal #releasedWrap{display:none}
+body.view-cal #calRoot{display:block;animation:fadeUp .5s both}
+.cal-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+.cal-nav{display:flex;gap:6px}
+.cal-title{font-size:1.2rem;font-weight:800;letter-spacing:-.01em}
+.cal-head #calIcs{margin-left:auto}
+.cal-wd{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;margin-bottom:8px}
+.cal-wd span{font-size:.66rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);text-align:center}
+.cal-cells{display:grid;grid-template-columns:repeat(7,1fr);gap:8px}
+.cal-cell{min-height:94px;background:var(--glass);border:1px solid var(--stroke-soft);border-radius:12px;padding:7px;display:flex;flex-direction:column;gap:4px}
+.cal-cell.empty{background:transparent;border:0}
+.cal-cell.today{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset,0 0 22px -6px var(--glow)}
+.cal-dn{font-size:.72rem;font-weight:800;color:var(--muted)}
+.cal-cell.today .cal-dn{color:var(--accent)}
+.cal-ev{display:flex;align-items:center;gap:5px;width:100%;text-align:left;background:rgba(255,255,255,.06);border:1px solid var(--stroke-soft);border-radius:7px;padding:4px 6px;font-size:.66rem;font-weight:700;color:var(--text);cursor:pointer;line-height:1.2}
+.cal-ev:hover{border-color:var(--accent);transform:translateY(-1px)}
+.cal-ev.rel{opacity:.55}
+.cal-dot{width:7px;height:7px;border-radius:50%;flex:0 0 auto}
+.cal-evt{overflow:hidden;white-space:nowrap;text-overflow:ellipsis;flex:1;min-width:0}
+.cal-approx{margin-top:18px;font-size:.82rem;color:var(--muted);display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.cal-approx b{color:var(--text)}
+.cal-chip{background:var(--glass);border:1px solid var(--stroke);border-radius:999px;padding:5px 11px;font-size:.76rem;font-weight:700;color:var(--text);cursor:pointer}
+.cal-chip:hover{border-color:var(--accent);transform:translateY(-1px)}
+@media(max-width:640px){.cal-cell{min-height:66px;padding:5px}.cal-ev{font-size:.56rem;padding:3px 4px}.cal-wd span{font-size:.56rem}}
 </style>
 </head>
 <body>
@@ -528,6 +564,7 @@ body.viewing .plats .plat{cursor:default}
     <div class="viewtog" id="viewTog">
       <button type="button" data-v="dash" class="on">▦ Dashboard</button>
       <button type="button" data-v="shelf">▧ Shelf</button>
+      <button type="button" data-v="cal">📅 Calendar</button>
     </div>
     <input type="text" id="search" class="searchbox" placeholder="🔍 Search your tracked games…" autocomplete="off">
     <div class="ctl-right">
@@ -546,6 +583,7 @@ body.viewing .plats .plat{cursor:default}
   </div>
 
   <div class="grid" id="grid"></div>
+  <div id="calRoot"></div>
 
   <div class="released-wrap hidden" id="releasedWrap">
     <button class="released-head" id="releasedHead" type="button"><span id="releasedLabel">Released</span> <span class="chev">▾</span></button>
@@ -953,6 +991,28 @@ function gcalUrl(g){
   return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${text}&dates=${dt}/${dte}&details=${details}&location=${loc}`;
 }
 
+/* ---- PC price & deals (CheapShark - keyless, CORS) ---- */
+const CS_STORE={1:'Steam',2:'GamersGate',3:'GMG',7:'GOG',8:'Origin',11:'Humble',13:'Uplay',15:'Fanatical',21:'WinGameStore',23:'GameBillet',24:'Voidu',25:'Epic',27:'Gamesplanet',28:'Gamesload',30:'IndieGala',31:'Blizzard',33:'DLGamer',34:'Noctre',35:'DreamGame'};
+let pcDeals=lsGet('gametracker_pcdeals',{});
+function savePcDeals(){lsSet('gametracker_pcdeals',pcDeals);}
+function normT(x){return (x||'').toLowerCase().replace(/[^a-z0-9]+/g,'');}
+const pcInflight={};
+function fetchPcDeal(title){
+  const key=normT(title),now=Date.now(),cached=pcDeals[key];
+  if(cached&&(now-cached.ts)<432e5)return Promise.resolve(cached);
+  if(pcInflight[key])return pcInflight[key];
+  const pr=(async()=>{let res={ts:now,none:true};
+    try{const r=await fetch('https://www.cheapshark.com/api/1.0/deals?title='+enc(title)+'&pageSize=14&sortBy=Price');
+      if(r.ok){const arr=await r.json();let best=null;
+        (arr||[]).forEach(d=>{const n=normT(d.title);
+          if(!(n===key||n.indexOf(key)===0||key.indexOf(n)===0||n.indexOf(key)>=0))return;
+          const price=parseFloat(d.salePrice);if(isNaN(price))return;
+          if(best===null||price<best.price)best={price,retail:parseFloat(d.normalPrice),savings:Math.round(parseFloat(d.savings||'0')),store:CS_STORE[d.storeID]||'PC store',dealID:d.dealID};});
+        if(best)res={ts:now,price:best.price,retail:best.retail,savings:best.savings,store:best.store,dealID:best.dealID};}
+    }catch(e){}
+    pcDeals[key]=res;savePcDeals();return res;})();
+  pcInflight[key]=pr;pr.then(()=>{delete pcInflight[key];},()=>{delete pcInflight[key];});return pr;
+}
 const grid=document.getElementById('grid');
 let currentFilter='all';
 
@@ -996,6 +1056,7 @@ function buildCard(g){
       <div class="row1"><span class="date">📅 ${meta.label}</span><span class="price">${shownPrice}</span></div>
       ${(g.platDates&&g.platDates.length)?'<div class="platdates">Also: '+g.platDates.map(pd=>'<b>'+esc(PLAT_LABEL[pd.plat]||pd.plat)+'</b> '+esc(dateMeta({date:pd.date,datePrecision:pd.datePrecision}).short)).join(' · ')+'</div>':''}
       <div class="note">${g.note||''}</div>
+      <div class="pcdeal" style="display:none"></div>
       ${edSelHtml}
       ${cdHtml}
       <div class="plats">${platsHtml}</div>
@@ -1042,6 +1103,11 @@ function buildCard(g){
   card.querySelectorAll('.plats .plat').forEach(el=>el.addEventListener('click',()=>{
     if(window.VIEWING)return;const cur=platformStore.get(g.id);platformStore.set(g.id,cur===el.dataset.p?null:el.dataset.p);applyPlatform();}));
   applyPlatform();
+  if(g.plats.includes('pc')){const slot=card.querySelector('.pcdeal');if(slot)fetchPcDeal(g.title).then(d=>{
+    if(!d||d.none||d.price==null)return;const sale=d.savings>0;
+    slot.innerHTML='<a href="https://www.cheapshark.com/redirect?dealID='+enc(d.dealID)+'" target="_blank" rel="noopener" title="View this PC deal on CheapShark">\ud83d\udcbb PC '+(sale?'<s>$'+d.retail.toFixed(2)+'</s> ':'')+'<b>$'+d.price.toFixed(2)+'</b> \u00b7 '+esc(d.store)+(sale?' <span class="salebadge">\u2212'+d.savings+'%</span>':'')+'</a>';
+    slot.style.display='block';
+  }).catch(()=>{});}
   card.querySelector('.edit').addEventListener('click',()=>openModal(g));
   card.querySelector('.buy').addEventListener('click',()=>openBuy(g));
   const edsel=card.querySelector('.edsel');
@@ -1110,7 +1176,7 @@ function renderGrid(animate){
     }
   }
 }
-function refresh(){renderGrid(false);}
+function refresh(){renderGrid(false);if(document.body.classList.contains('view-cal'))renderCalendar();}
 
 function renderHero(){
   const now=new Date();
@@ -1151,7 +1217,7 @@ function updateBudget(){
   el.innerHTML=`<div class="bmain">💰 Planning to buy: <span>${chosen.length} game${chosen.length>1?'s':''}</span> · ${money(total)}${tbaTxt}</div><div class="bmonths">${months}</div>`;
 }
 
-function renderAll(){rebuildList();refreshGenreOptions();renderGrid(true);renderHero();updateBudget();tick();}
+function renderAll(){rebuildList();refreshGenreOptions();renderGrid(true);renderHero();updateBudget();tick();if(document.body.classList.contains('view-cal'))renderCalendar();}
 
 document.getElementById('filters').addEventListener('click',e=>{
   const chip=e.target.closest('.chip');if(!chip)return;
@@ -1163,8 +1229,58 @@ document.getElementById('sortSel').addEventListener('change',e=>{sortMode=e.targ
 document.getElementById('groupChk').addEventListener('change',e=>{groupBy=e.target.checked;refresh();});
 document.getElementById('genreSel').addEventListener('change',e=>{currentGenre=e.target.value;refresh();});
 let currentView=lsGet('gametracker_view','dash');
-function applyView(){document.body.classList.toggle('view-dash',currentView!=='shelf');document.body.classList.toggle('view-shelf',currentView==='shelf');document.querySelectorAll('#viewTog button').forEach(b=>b.classList.toggle('on',b.dataset.v===currentView));}
+function applyView(){const v=['shelf','cal'].includes(currentView)?currentView:'dash';
+  document.body.classList.toggle('view-dash',v==='dash');
+  document.body.classList.toggle('view-shelf',v==='shelf');
+  document.body.classList.toggle('view-cal',v==='cal');
+  document.querySelectorAll('#viewTog button').forEach(b=>b.classList.toggle('on',b.dataset.v===currentView));
+  if(v==='cal')renderCalendar();}
 document.getElementById('viewTog').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;currentView=b.dataset.v;lsSet('gametracker_view',currentView);applyView();});
+/* ---- Calendar month view ---- */
+let calYear=null,calMonth=null;const CAL_WD=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+function platDotColor(g){return g.plats.includes('ps')?'var(--ps)':g.plats.includes('xbox')?'var(--xbox)':g.plats.includes('pc')?'var(--pc)':g.plats.includes('switch')?'var(--switch)':'var(--accent)';}
+function renderCalendar(){
+  const root=document.getElementById('calRoot');if(!root)return;
+  if(calYear==null){const d=new Date();calYear=d.getFullYear();calMonth=d.getMonth();}
+  const src=(typeof ALL!=='undefined'&&Array.isArray(ALL))?ALL:[];
+  const first=new Date(calYear,calMonth,1),startWd=first.getDay(),days=new Date(calYear,calMonth+1,0).getDate();
+  const today=new Date(),thisMonth=today.getFullYear()===calYear&&today.getMonth()===calMonth;
+  const byDay={},approx=[];
+  src.filter(matchesFilter).forEach(g=>{const m=dateMeta(g);
+    if(m.isExact){const d=m.start;if(d.getFullYear()===calYear&&d.getMonth()===calMonth)(byDay[d.getDate()]=byDay[d.getDate()]||[]).push(g);}
+    else if((m.prec==='month'||m.prec==='quarter')&&m.start){const d=m.start;const inM=m.prec==='month'?(d.getFullYear()===calYear&&d.getMonth()===calMonth):(d.getFullYear()===calYear&&Math.floor(d.getMonth()/3)===Math.floor(calMonth/3));if(inM)approx.push(g);}});
+  let h='<div class="cal-head"><div class="cal-nav"><button class="smallbtn" id="calPrev">‹ Prev</button><button class="smallbtn" id="calToday">Today</button><button class="smallbtn" id="calNext">Next ›</button></div>'
+    +'<div class="cal-title">'+first.toLocaleDateString('en-US',{month:'long',year:'numeric'})+'</div>'
+    +'<button class="smallbtn" id="calIcs" title="Download an .ics with all your upcoming dated games">⬇ Add all to calendar</button></div>';
+  h+='<div class="cal-wd">'+CAL_WD.map(w=>'<span>'+w+'</span>').join('')+'</div><div class="cal-cells">';
+  for(let i=0;i<startWd;i++)h+='<div class="cal-cell empty"></div>';
+  for(let day=1;day<=days;day++){const items=byDay[day]||[];const isT=thisMonth&&today.getDate()===day;
+    h+='<div class="cal-cell'+(isT?' today':'')+'"><div class="cal-dn">'+day+'</div>'
+      +items.map(g=>{const rel=new Date(g.date)<=new Date();return '<button class="cal-ev'+(rel?' rel':'')+'" data-id="'+esc(g.id)+'" title="'+esc(g.title)+'"><span class="cal-dot" style="background:'+platDotColor(g)+'"></span><span class="cal-evt">'+esc(g.title)+'</span></button>';}).join('')
+      +'</div>';}
+  h+='</div>';
+  if(approx.length)h+='<div class="cal-approx"><b>Also expected in '+first.toLocaleDateString('en-US',{month:'long'})+':</b> '+approx.map(g=>'<button class="cal-chip" data-id="'+esc(g.id)+'">'+esc(g.title)+'</button>').join('')+'</div>';
+  root.innerHTML=h;
+  document.getElementById('calPrev').onclick=()=>{calMonth--;if(calMonth<0){calMonth=11;calYear--;}renderCalendar();};
+  document.getElementById('calNext').onclick=()=>{calMonth++;if(calMonth>11){calMonth=0;calYear++;}renderCalendar();};
+  document.getElementById('calToday').onclick=()=>{const d=new Date();calYear=d.getFullYear();calMonth=d.getMonth();renderCalendar();};
+  document.getElementById('calIcs').onclick=downloadAllIcs;
+  root.querySelectorAll('.cal-ev,.cal-chip').forEach(el=>el.onclick=()=>{const g=src.find(x=>x.id===el.dataset.id);if(g)openModal(g);});
+}
+function downloadAllIcs(){
+  const src=(typeof ALL!=='undefined'&&Array.isArray(ALL))?ALL:[];const now=new Date();
+  const up=src.filter(matchesFilter).filter(g=>dateMeta(g).isExact&&new Date(g.date)>now).sort((a,b)=>new Date(a.date)-new Date(b.date));
+  const btn=document.getElementById('calIcs');
+  if(!up.length){if(btn){const o=btn.textContent;btn.textContent='No upcoming dated games';setTimeout(()=>btn.textContent=o,1800);}return;}
+  const fmt=d=>d.getFullYear()+two(d.getMonth()+1)+two(d.getDate());
+  let ics='BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//GameTracker//EN\r\nCALSCALE:GREGORIAN\r\n';
+  up.forEach(g=>{const d=new Date(g.date),nd=new Date(d.getTime()+86400000);
+    ics+='BEGIN:VEVENT\r\nUID:'+g.id+'@gametracker\r\nDTSTART;VALUE=DATE:'+fmt(d)+'\r\nDTEND;VALUE=DATE:'+fmt(nd)+'\r\nSUMMARY:\ud83c\udfae '+String(g.title).replace(/[,;]/g,' ')+' releases\r\nDESCRIPTION:Platforms: '+g.plats.map(x=>PLAT_LABEL[x]).join(', ')+'\r\nEND:VEVENT\r\n';});
+  ics+='END:VCALENDAR';
+  const blob=new Blob([ics],{type:'text/calendar'}),url=URL.createObjectURL(blob),a=document.createElement('a');
+  a.href=url;a.download='game-releases.ics';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1500);
+  if(btn){const o=btn.textContent;btn.textContent='\u2713 '+up.length+' added';setTimeout(()=>btn.textContent=o,1800);}
+}
 applyView();
 function refreshGenreOptions(){const sel=document.getElementById('genreSel');if(!sel)return;const set=new Set();ALL.forEach(g=>(g.genres||[]).forEach(x=>set.add(x)));const list=[...set].sort();if(currentGenre&&!set.has(currentGenre))currentGenre='';sel.innerHTML='<option value="">All genres</option>'+list.map(x=>'<option value="'+esc(x)+'"'+(x===currentGenre?' selected':'')+'>'+esc(x)+'</option>').join('');sel.value=currentGenre;}
 document.getElementById('releasedHead').addEventListener('click',()=>{releasedOpen=!releasedOpen;
@@ -1587,8 +1703,12 @@ buyOverlay.addEventListener('click',e=>{if(e.target===buyOverlay)buyOverlay.clas
    Bump APP_VERSION and prepend a WHATS_NEW entry whenever features ship. The
    popup auto-shows once per version (tracked in localStorage); the 🆕 What's
    new button reopens the full history any time. */
-const APP_VERSION="2026.10.14c";
+const APP_VERSION="2026.10.14d";
 const WHATS_NEW=[
+  {v:"2026.10.14d",title:"Calendar view + PC deals",items:[
+    "📅 <b>Calendar view</b> — a new third view (next to Dashboard &amp; Shelf) lays your upcoming releases on a month grid. Flip months, jump to Today, tap a game to open it, and hit <b>Add all to calendar</b> to export them as a calendar file.",
+    "💻 <b>PC prices &amp; deals</b> — games on PC now show their current best price and any active discount (e.g. <s>$69.99</s> $41.99 · Steam −40%), pulled live from CheapShark. Tap it to open the deal.",
+  ]},
   {v:"2026.10.14c",title:"Pick your platform",items:[
     "🎯 <b>Choose where you'll get each game</b> — tap a platform pill on a card to mark the one you plan to buy it on. It highlights with a ✓ and the others dim, so your pick is clear at a glance. You can also set it in the Edit form, and it syncs across your devices.",
   ]},

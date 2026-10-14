@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-10 — Calendar view + PC deals
+- **Calendar view** — a third view toggle (📅 Calendar) alongside
+  Dashboard/Shelf. Shows upcoming releases on a month grid with prev/next/
+  Today nav, platform-colored dots, tap-to-open, an "also expected" row for
+  month/quarter dates, and an **Add all to calendar** (.ics) export. Respects
+  the active search / platform / genre filters.
+- **PC price & deals** — games on PC fetch their current best price and any
+  active discount from **CheapShark** (keyless, CORS) and show it on the card
+  (e.g. ~~$69.99~~ $41.99 · Steam −40%) linking to the deal. Cached per game
+  for 12h in localStorage (`gametracker_pcdeals`), negative-cached, and
+  degrades silently when no listing is found. Hidden in Shelf view.
+
 ## 2026-10 — Pick your platform
 - **Choose which platform you'll get each game on.** Tap a platform pill
   on a card to mark your pick — it highlights with a ✓ and the others dim.
