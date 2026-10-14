@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-10 — Pick your platform
+- **Choose which platform you'll get each game on.** Tap a platform pill
+  on a card to mark your pick — it highlights with a ✓ and the others dim.
+  Also settable from a dropdown in the Add/Edit form.
+- Stored per game in a new `platformStore` (localStorage `gametracker_platform`)
+  and synced across devices / included in share + backup, like status,
+  priority and edition. Purely a visual marker — the Buy picker is unchanged.
+
 ## 2026-10 — Dashboard card polish
 - **Full cover art** on Dashboard cards — the horizontal card art is no
   longer center-cropped; the whole cover shows (letterboxed on a blurred

@@ -479,6 +479,13 @@ body.view-dash .card .body{padding-left:21px}
 .card.soon .cdday .num{background:none;color:var(--soon);text-shadow:0 0 14px rgba(255,93,126,.5)}
 .card.released .cdday .num{background:none;color:var(--accent2)}
 body.view-shelf .cdday .num{font-size:1.7rem}
+
+/* ===== "My platform" pick ===== */
+.plats .plat{cursor:pointer;transition:opacity .15s,box-shadow .15s}
+.plats .plat.dim{opacity:.32}
+.plats .plat.mine{box-shadow:0 0 0 2px rgba(255,255,255,.92),0 5px 16px -4px rgba(0,0,0,.6)}
+.plats .plat.mine::before{content:"\2713 ";font-weight:900}
+body.viewing .plats .plat{cursor:default}
 </style>
 </head>
 <body>
@@ -592,6 +599,10 @@ body.view-shelf .cdday .num{font-size:1.7rem}
         <div class="psel" data-p="pc">PC</div>
         <div class="psel" data-p="switch">Switch</div>
       </div>
+    </div>
+    <div class="field">
+      <label>Which platform will you get it on? <span style="color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0">(optional)</span></label>
+      <select id="f_myplat"><option value="">No preference</option></select>
     </div>
     <div class="two">
       <div class="field"><label>Buy link (optional)</label><input type="url" id="f_buy" placeholder="https://…"></div>
@@ -839,6 +850,9 @@ const priorityStore={data:lsGet('gametracker_priority',{}),
 const editionStore={data:lsGet('gametracker_edition',{}),
   get(k){return this.data[k]||0;},
   set(k,v){if(window.VIEWING)return;if(v)this.data[k]=v;else delete this.data[k];lsSet('gametracker_edition',this.data);scheduleSync();}};
+const platformStore={data:lsGet('gametracker_platform',{}),
+  get(k){return this.data[k]||null;},
+  set(k,v){if(window.VIEWING)return;if(v)this.data[k]=v;else delete this.data[k];lsSet('gametracker_platform',this.data);scheduleSync();}};
 function editionsOf(g){return [{name:'Standard',price:g.price||'TBA'}].concat(Array.isArray(g.editions)?g.editions:[]);}
 function effectivePrice(g){const eds=editionsOf(g);let i=editionStore.get(g.id);if(i<0||i>=eds.length)i=0;return eds[i].price;}
 /* flexible release timing: exact date / month / quarter / year / TBA */
@@ -958,7 +972,7 @@ function buildCard(g){
   const card=document.createElement('div');
   card.className='card'+(g.builtin?'':' custom');
   card.dataset.plats=g.plats.join(',');
-  const platsHtml=g.plats.map(p=>`<span class="plat ${p}">${PLAT_LABEL[p]}</span>`).join('');
+  const platsHtml=g.plats.map(p=>`<span class="plat ${p}" data-p="${p}" title="Tap to mark the platform you\u2019ll get it on">${PLAT_LABEL[p]}</span>`).join('');
   const meta=dateMeta(g);
   const buy=g.buy||('https://www.google.com/search?q='+enc(g.title));
   const trailer=g.trailer||('https://www.youtube.com/results?search_query='+enc(g.title+' trailer'));
@@ -1022,6 +1036,12 @@ function buildCard(g){
     applyStars();if(sortMode==='priority')refresh();
   }));
   applyStars();
+  const applyPlatform=()=>{const mine=platformStore.get(g.id);
+    card.querySelectorAll('.plats .plat').forEach(el=>{const on=mine&&el.dataset.p===mine;
+      el.classList.toggle('mine',!!on);el.classList.toggle('dim',!!(mine&&!on));});};
+  card.querySelectorAll('.plats .plat').forEach(el=>el.addEventListener('click',()=>{
+    if(window.VIEWING)return;const cur=platformStore.get(g.id);platformStore.set(g.id,cur===el.dataset.p?null:el.dataset.p);applyPlatform();}));
+  applyPlatform();
   card.querySelector('.edit').addEventListener('click',()=>openModal(g));
   card.querySelector('.buy').addEventListener('click',()=>openBuy(g));
   const edsel=card.querySelector('.edsel');
@@ -1207,7 +1227,7 @@ function confetti(){
 }
 
 /* ---- backup / export / import ---- */
-function gatherData(){return{app:'game-release-tracker',v:1,custom,overrides,status:statusStore.data,priority:priorityStore.data,edition:editionStore.data};}
+function gatherData(){return{app:'game-release-tracker',v:1,custom,overrides,status:statusStore.data,priority:priorityStore.data,edition:editionStore.data,platform:platformStore.data};}
 function encodeData(){try{return btoa(unescape(encodeURIComponent(JSON.stringify(gatherData()))));}catch(e){return JSON.stringify(gatherData());}}
 function decodeData(str){str=(str||'').trim();if(!str)throw new Error('empty');
   try{return JSON.parse(str);}catch(e){}
@@ -1220,6 +1240,7 @@ function applyData(obj,fromRemote){
   if(obj.status&&typeof obj.status==='object'){statusStore.data=obj.status;lsSet('gametracker_status',statusStore.data);}
   if(obj.priority&&typeof obj.priority==='object'){priorityStore.data=obj.priority;lsSet('gametracker_priority',priorityStore.data);}
   if(obj.edition&&typeof obj.edition==='object'){editionStore.data=obj.edition;lsSet('gametracker_edition',editionStore.data);}
+  if(obj.platform&&typeof obj.platform==='object'){platformStore.data=obj.platform;lsSet('gametracker_platform',platformStore.data);}
   renderAll();
   applyingRemote=was;
   if(!fromRemote)scheduleSync();
@@ -1425,6 +1446,11 @@ const fTitle=document.getElementById('f_title'),fDate=document.getElementById('f
 let pendingCover=null; // remote url or dataurl
 let editing=null;
 const setPlats=arr=>document.querySelectorAll('#f_plats .psel').forEach(el=>el.classList.toggle('on',arr.includes(el.dataset.p)));
+function syncMyPlatOptions(keep){const sel=document.getElementById('f_myplat');if(!sel)return;
+  const cur=(keep!=null)?keep:sel.value;
+  const on=[...document.querySelectorAll('#f_plats .psel.on')].map(el=>el.dataset.p);
+  sel.innerHTML='<option value="">No preference</option>'+on.map(x=>'<option value="'+x+'">'+PLAT_LABEL[x]+'</option>').join('');
+  sel.value=on.includes(cur)?cur:'';}
 const fPrec=document.getElementById('f_prec'),fMonth=document.getElementById('f_month'),fQ=document.getElementById('f_q'),fQy=document.getElementById('f_qy'),fYear=document.getElementById('f_year');
 function showTiming(prec){
   document.getElementById('f_date').style.display=prec==='day'?'block':'none';
@@ -1518,6 +1544,7 @@ function openModal(game){
     document.getElementById('f_msub').textContent="Start typing a title — I'll pull the cover, release date and platforms from the web. You can edit anything.";
     fCstatus.textContent='Pick a suggestion, or search from the title.';
   }
+  syncMyPlatOptions(editing?platformStore.get(editing.id):'');
   overlay.classList.add('open');setTimeout(()=>{if(!editing)fTitle.focus();},50);
 }
 function closeModal(){editing=null;overlay.classList.remove('open');}
@@ -1560,8 +1587,11 @@ buyOverlay.addEventListener('click',e=>{if(e.target===buyOverlay)buyOverlay.clas
    Bump APP_VERSION and prepend a WHATS_NEW entry whenever features ship. The
    popup auto-shows once per version (tracked in localStorage); the 🆕 What's
    new button reopens the full history any time. */
-const APP_VERSION="2026.10.14b";
+const APP_VERSION="2026.10.14c";
 const WHATS_NEW=[
+  {v:"2026.10.14c",title:"Pick your platform",items:[
+    "🎯 <b>Choose where you'll get each game</b> — tap a platform pill on a card to mark the one you plan to buy it on. It highlights with a ✓ and the others dim, so your pick is clear at a glance. You can also set it in the Edit form, and it syncs across your devices.",
+  ]},
   {v:"2026.10.14b",title:"A bold new look",items:[
     "🎨 <b>Fresh redesign</b> — a new <b>Ember</b> look (warm orange on carbon), a cinematic hero with a big launch-day countdown, and redesigned game cards. Same app — all your games, statuses and data are untouched.",
     "🗂️ <b>Dashboard ⇄ Shelf views</b> — a new toggle in the controls row. <b>Dashboard</b> shows full detailed cards; <b>Shelf</b> is an art-forward browse wall with a warmer tone. Your choice is remembered on each device.",
@@ -1618,7 +1648,7 @@ document.getElementById('helpClose').addEventListener('click',()=>helpOverlay.cl
 helpOverlay.addEventListener('click',e=>{if(e.target===helpOverlay)helpOverlay.classList.remove('open');});
 document.getElementById('f_cancel').addEventListener('click',closeModal);
 overlay.addEventListener('click',e=>{if(e.target===overlay)closeModal();});
-document.querySelectorAll('#f_plats .psel').forEach(el=>el.addEventListener('click',()=>el.classList.toggle('on')));
+document.querySelectorAll('#f_plats .psel').forEach(el=>el.addEventListener('click',()=>{el.classList.toggle('on');syncMyPlatOptions();}));
 
 /* ---- live title autocomplete ---- */
 let acTimer=null,acResults=[];
@@ -1718,6 +1748,7 @@ document.getElementById('f_save').addEventListener('click',async()=>{
     const g=Object.assign({id:'c'+new Date().getTime(),note:'Added by you',builtin:false},fields);
     custom.push(g);saveCustom();targetId=g.id;
   }
+  const myp=document.getElementById('f_myplat').value;platformStore.set(targetId,myp||null);
   closeModal();renderAll();
   setTimeout(()=>{const t=ALL.find(x=>x.id===targetId);if(t&&t._el)t._el.scrollIntoView({behavior:'smooth',block:'center'});},80);
 });
@@ -1888,7 +1919,7 @@ async function enterViewMode(slug){
     const d=(snap.data()&&snap.data().data)||{},nm=(snap.data()&&snap.data().name)||slug;
     custom=Array.isArray(d.custom)?d.custom.map(x=>Object.assign({},x,{builtin:false})):[];
     overrides=(d.overrides&&typeof d.overrides==='object')?d.overrides:{};
-    statusStore.data=d.status||{};priorityStore.data=d.priority||{};editionStore.data=d.edition||{};
+    statusStore.data=d.status||{};priorityStore.data=d.priority||{};editionStore.data=d.edition||{};platformStore.data=d.platform||{};
     renderAll();
     banner.innerHTML='<span>👁 Viewing <b>'+esc(nm)+'</b>’s list — read-only</span><a href="'+location.pathname+'">← Back to my list</a>';
   }catch(e){
