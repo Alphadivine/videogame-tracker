@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-10 — Bold redesign: Ember look + Dashboard/Shelf views
+- New **Ember** visual identity (warm orange accents on a carbon base),
+  replacing the previous purple/teal. Recolored app-wide via CSS variables.
+- **Cinematic hero** — the next release fills a larger hero with a big
+  launch-day number + a monospace HH:MM:SS clock (was four equal boxes).
+- **Horizontal cards** in Dashboard view (cover on the left, details on
+  the right) for a more premium, console-store feel.
+- **New Dashboard ⇄ Shelf toggle** in the controls row. Dashboard = full
+  detailed cards; Shelf = an art-forward poster wall with a warmer, distinct
+  accent and the heavier action rows tucked away for clean browsing. The
+  chosen view is remembered per device (localStorage `gametracker_view`).
+- Purely a reskin + view option: every feature, countdown, sync, status,
+  edition/free-price handling and bit of logic is unchanged.
+
 ## 2026-10 — "What's new" panel
 - Added a **🆕 What's new** button to the toolbar and a popup that shows the
   latest updates. It appears automatically once per app version (only the
