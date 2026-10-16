@@ -522,6 +522,14 @@ body.view-cal #calRoot{display:block;animation:fadeUp .5s both}
 .cal-chip{background:var(--glass);border:1px solid var(--stroke);border-radius:999px;padding:5px 11px;font-size:.76rem;font-weight:700;color:var(--text);cursor:pointer}
 .cal-chip:hover{border-color:var(--accent);transform:translateY(-1px)}
 @media(max-width:640px){.cal-cell{min-height:66px;padding:5px}.cal-ev{font-size:.56rem;padding:3px 4px}.cal-wd span{font-size:.56rem}}
+
+/* ===== Discover: info / description ===== */
+.ddesc{font-size:.74rem;line-height:1.5;color:var(--text);background:rgba(255,255,255,.04);border:1px solid var(--stroke-soft);border-radius:9px;padding:8px 10px;max-height:148px;overflow:auto}
+.ddesc::-webkit-scrollbar{width:6px}.ddesc::-webkit-scrollbar-thumb{background:var(--stroke);border-radius:6px}
+.dmut{color:var(--muted)}
+.dactions{display:flex;gap:6px;margin-top:auto}
+.dcard .dactions .dadd{margin-top:0;width:auto;flex:1}
+.dactions .dinfo{flex:0 0 auto;padding:10px 11px}
 </style>
 </head>
 <body>
@@ -1703,8 +1711,11 @@ buyOverlay.addEventListener('click',e=>{if(e.target===buyOverlay)buyOverlay.clas
    Bump APP_VERSION and prepend a WHATS_NEW entry whenever features ship. The
    popup auto-shows once per version (tracked in localStorage); the 🆕 What's
    new button reopens the full history any time. */
-const APP_VERSION="2026.10.14d";
+const APP_VERSION="2026.10.16a";
 const WHATS_NEW=[
+  {v:"2026.10.16a",title:"Game info in Discover",items:[
+    "ℹ️ <b>See what a game is about</b> — every card in <b>✨ Discover</b> now has an <b>Ⓘ Info</b> button that expands a short description (from Wikipedia), so you can get the gist before adding it to your list.",
+  ]},
   {v:"2026.10.14d",title:"Calendar view + PC deals",items:[
     "📅 <b>Calendar view</b> — a new third view (next to Dashboard &amp; Shelf) lays your upcoming releases on a month grid. Flip months, jump to Today, tap a game to open it, and hit <b>Add all to calendar</b> to export them as a calendar file.",
     "💻 <b>PC prices &amp; deals</b> — games on PC now show their current best price and any active discount (e.g. <s>$69.99</s> $41.99 · Steam −40%), pulled live from CheapShark. Tap it to open the deal.",
@@ -2139,6 +2150,15 @@ function fmtDiscDate(item){
   if(item.prec==='month'){try{return 'Expected '+new Date(item.date+'T00:00:00').toLocaleDateString('en-US',{month:'short',year:'numeric'});}catch(e){return 'Expected '+item.date.slice(0,7);}}
   try{return new Date(item.date+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});}catch(e){return item.date;}
 }
+const descCache={};
+async function descForTitle(title){
+  if(descCache[title]!==undefined)return descCache[title];
+  let out=null;
+  try{const r=await fetch('https://en.wikipedia.org/api/rest_v1/page/summary/'+encodeURIComponent(String(title).replace(/ /g,'_')));
+    if(r.ok){const j=await r.json();if(j&&j.extract&&j.type!=='disambiguation')out=j.extract;}
+  }catch(e){}
+  descCache[title]=out;return out;
+}
 function discoverCard(item){
   const card=document.createElement('div');card.className='dcard';
   const plats=(item.plats||[]).map(p=>`<span class="plat ${p}">${PLAT_LABEL[p]}</span>`).join('');
@@ -2147,8 +2167,18 @@ function discoverCard(item){
     '<div class="dbody"><div class="dtitle">'+esc(item.title)+'</div>'+
     '<div class="dmeta"><span class="ddate">📅 '+esc(fmtDiscDate(item))+'</span></div>'+
     '<div class="dplats">'+plats+'</div>'+
-    '<button class="smallbtn dadd" type="button"'+(added?' disabled':'')+'>'+(added?'✓ On your list':'＋ Add')+'</button></div>';
+    '<div class="ddesc" style="display:none"></div>'+
+    '<div class="dactions"><button class="smallbtn dinfo" type="button">ⓘ Info</button>'+
+    '<button class="smallbtn dadd" type="button"'+(added?' disabled':'')+'>'+(added?'✓ On your list':'＋ Add')+'</button></div></div>';
   card.querySelector('.dadd').addEventListener('click',()=>{if(added)return;document.getElementById('discoverOverlay').classList.remove('open');openAddFromDiscover(item);});
+  const dInfo=card.querySelector('.dinfo'),dDesc=card.querySelector('.ddesc');let dLoaded=false;
+  dInfo.addEventListener('click',async()=>{
+    if(dDesc.style.display!=='none'){dDesc.style.display='none';dInfo.textContent='ⓘ Info';return;}
+    dDesc.style.display='block';dInfo.textContent='✕ Hide';
+    if(!dLoaded){dLoaded=true;dDesc.innerHTML='<span class="dmut">Loading description…</span>';
+      let d=null;try{d=await descForTitle(item.title);}catch(e){}
+      if(d){dDesc.textContent=d;}else{dDesc.innerHTML='<span class="dmut">No description found — try the ＋ Add form, which also pulls details.</span>';}}
+  });
   if(!item.cover){try{searchCover(item.title).then(u=>{if(u){const cov=card.querySelector('.dcover');cov.style.backgroundImage="url('"+u+"')";const ph=cov.querySelector('.dph');if(ph)ph.remove();}}).catch(()=>{});}catch(e){}}
   return card;
 }

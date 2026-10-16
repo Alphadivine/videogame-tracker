@@ -36,7 +36,7 @@ No build step, no dependencies. It's one self-contained `index.html` plus an ico
 - **🆕 What's new** — a changelog panel that pops up once after each update (showing only what's new since your last visit) and reopens any time from the toolbar, with older updates tucked behind a fold.
 - **📊 Spending dashboard** — planned spend, spent this year, library value, and upcoming spend by month.
 - **↻ Update dates** — re-checks your upcoming games on the web and refreshes any release dates that have slipped.
-- **✨ Discover** — browse popular upcoming games and big DLC and add them in a tap. Keyless live feed ranked by popularity (via Wikidata); a RAWG key is optional, and a hand-picked list shows if the feed is unreachable.
+- **✨ Discover** — browse popular upcoming games and big DLC and add them in a tap. Each card has an **ⓘ Info** button that expands a short description (from Wikipedia). Keyless live feed ranked by popularity (via Wikidata); a RAWG key is optional, and a hand-picked list shows if the feed is unreachable.
 
 **Sync & backup**
 - **Cross-device sync** via a free **Firebase** project — set it up once (see `Cloud sync setup (Firebase).txt`), tap **Turn on sync**, and a sync code carries it to your other devices. Changes then sync **live**, both ways, in the background.
@@ -97,4 +97,4 @@ Or, once cloud sync is set up, just **Turn on sync** on one device and **Connect
 
 ---
 
-_Last updated: October 14, 2026 (Calendar view + PC deals). Full change history in `CHANGELOG.md`._
+_Last updated: October 16, 2026 (game info in Discover). Full change history in `CHANGELOG.md`._

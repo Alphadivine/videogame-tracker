@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10 — Game descriptions in Discover
+- Every **✨ Discover** card now has an **ⓘ Info** button that expands a
+  short game description, lazy-loaded from Wikipedia's summary API
+  (keyless, CORS) and cached per title. Toggles to ✕ Hide; falls back to a
+  hint when no article is found.
+
 ## 2026-10 — Calendar view + PC deals
 - **Calendar view** — a third view toggle (📅 Calendar) alongside
   Dashboard/Shelf. Shows upcoming releases on a month grid with prev/next/
